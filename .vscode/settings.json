@@ -1,0 +1,27 @@
+{
+  "editor.formatOnSave": true,
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always",
+    "source.organizeImports": "always",
+    "source.sortMembers": "always"
+  },
+  "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+  "prettier.configPath": ".prettierrc",
+  "prettier.useEditorConfig": false,
+  "[typescript]": {
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+  },
+  "[prisma]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2,
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2,
+  },
+  "[gocss]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+}

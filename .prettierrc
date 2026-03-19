@@ -1,0 +1,8 @@
+{
+  "bracketSpacing": true,
+  "objectWrap": "preserve",
+  "tabWidth": 2,
+  "quoteProps": "as-needed",
+  "singleQuote": false,
+  "trailingComma": "all"
+}
