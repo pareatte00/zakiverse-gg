@@ -1,19 +1,16 @@
-import { NextRequest, NextResponse } from "next/server"
-import { findCookie } from "./lib/hook/cookie"
-import { Cookie } from "./lib/const/const.cookie"
-import { Route } from "./lib/const/const.url"
+import { NextRequest } from "next/server"
 
-export default async function middleware(req: NextRequest) {
-  const temporaryKey = await findCookie(Cookie.temporaryKey)
+export default function middleware(req: NextRequest) {
+  // const accessToken = req.cookies.get(Cookie.accessToken)?.value
 
-  if (temporaryKey) {
-    return NextResponse.next()
-  }
+  // if (accessToken) {
+  //   return NextResponse.next()
+  // }
 
-  const url = req.nextUrl.clone()
-  url.pathname = Route.Public.Login
+  // const url = req.nextUrl.clone()
+  // url.pathname = Route.Public.Login
 
-  return NextResponse.redirect(url)
+  // return NextResponse.redirect(url)
 }
 
 export const config = {

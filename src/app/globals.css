@@ -172,3 +172,40 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* All interactive elements get pointer cursor */
+a, button, [role="button"], input[type="submit"], input[type="reset"], input[type="button"], select, summary {
+  cursor: pointer;
+}
+
+/* Safe area padding for phones with home indicator */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Center nav button — subtle shine sweep */
+@keyframes center-shine {
+  0% { transform: translateX(-100%) rotate(20deg); }
+  100% { transform: translateX(200%) rotate(20deg); }
+}
+
+.nav-center-btn {
+  overflow: hidden;
+}
+.nav-center-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.06) 45%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.06) 55%,
+    transparent 60%
+  );
+  transform: translateX(-100%) rotate(20deg);
+  animation: center-shine 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
