@@ -1,19 +1,17 @@
-export const Website = {
-  main:                 process.env.MAIN_URL,
-  api:                  process.env.API_URL,
-  apiFacebookAdScraper: process.env.API_FACEBOOK_AD_SCRAPER_URL,
-}
-
 export const Public = {
-  Login: "/login",
+  Login:           "/login",
+  DiscordCallback: "/auth/discord/callback",
 } as const
 
 export const Private = {
-
+  Home:       "/",
+  Collection: "/collection",
+  Packs:      "/packs",
+  Shop:       "/shop",
+  Profile:    "/profile",
 } as const
 
 export const Route = {
-  Website,
   Public,
   Private,
 } as const

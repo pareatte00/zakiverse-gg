@@ -2,13 +2,9 @@ import { ThemeProvider } from "@/components/provider/ThemeProvider"
 import type { Metadata } from "next"
 import { NextIntlClientProvider } from "next-intl"
 import { getLocale } from "next-intl/server"
-import { Anuphan, Outfit } from "next/font/google"
+import { Outfit } from "next/font/google"
 import "./globals.css"
 
-const anuphan = Anuphan({
-  variable: "--font-anuphan",
-  subsets:  [ "thai" ],
-})
 const outfit = Outfit({
   variable: "--font-outfit",
   subsets:  [ "latin" ],
@@ -29,7 +25,7 @@ export default async function RootLayout({
   return (
     <html suppressHydrationWarning lang={locale}>
       <body
-        className={`${outfit.variable} ${anuphan.variable} antialiased`}
+        className={`${outfit.variable} antialiased`}
       >
         <NextIntlClientProvider locale={locale}>
           <ThemeProvider

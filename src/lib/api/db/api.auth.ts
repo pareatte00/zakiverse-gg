@@ -1,5 +1,6 @@
 "use server"
 
+import { Env } from "@/lib/const/const.env"
 import { api, HttpResponse } from "./api"
 
 export interface AuthDiscordRequest {
@@ -12,7 +13,8 @@ export interface AuthDiscordPayload {
 
 export async function authDiscord(param: AuthDiscordRequest) {
   return await api.post<HttpResponse<AuthDiscordPayload>>({
-    url:  "/auth/discord",
-    data: param,
+    url:        "/v1/account/auth/discord",
+    data:       param,
+    serviceKey: Env.systemServiceKey,
   })
 }

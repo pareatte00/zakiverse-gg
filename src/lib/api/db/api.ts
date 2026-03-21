@@ -1,9 +1,7 @@
-"use server"
-
-import { Website } from "../../const/const.url"
+import { Env } from "@/lib/const/const.env"
 import usexAxios from "../../hook/use-xaxios"
 
-export const api = usexAxios(Website.api)
+export const api = usexAxios(Env.apiUrl)
 
 export interface HttpResponse<T = any> {
   timestamp: string

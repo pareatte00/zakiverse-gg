@@ -1,15 +1,16 @@
 "use client"
 
+import { Private } from "@/lib/const/const.url"
 import { cn } from "@/lib/utils"
 import { Bell } from "lucide-react"
 import { usePathname } from "next/navigation"
 
 const PAGE_TITLES: Record<string, string> = {
-  "/": "Home",
-  "/packs": "Packs",
-  "/collection": "Collection",
-  "/shop": "Shop",
-  "/profile": "Profile",
+  [Private.Home]:       "Home",
+  [Private.Packs]:      "Packs",
+  [Private.Collection]: "Collection",
+  [Private.Shop]:       "Shop",
+  [Private.Profile]:    "Profile",
 }
 
 export function GameHeader() {
@@ -20,7 +21,8 @@ export function GameHeader() {
     <header className={cn(
       "sticky top-0 z-40 flex items-center justify-between",
       "border-b border-stone-800/40 bg-stone-900/95 px-4 py-3 backdrop-blur-md",
-    )}>
+    )}
+    >
       {/* Page title */}
       <h1 className={"text-base font-bold text-stone-100 tracking-wide"}>
         {title}

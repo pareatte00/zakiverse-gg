@@ -48,7 +48,7 @@ class xAxios {
     const headers: Record<string, string> = {
       ...(param.header ?? {}),
       ...(param.bearerToken ? { Authorization: `Bearer ${param.bearerToken}` } : {}),
-      ...(param.serviceKey ? { "Cloudtech-Service-Key": param.serviceKey } : {}),
+      ...(param.serviceKey ? { "X-System-Key": param.serviceKey } : {}),
     }
 
     return {

@@ -1,16 +1,17 @@
 "use client"
 
+import { Private } from "@/lib/const/const.url"
 import { cn } from "@/lib/utils"
 import { BookOpen, Home, ShoppingCart, Sparkles, User } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 const NAV_ITEMS = [
-  { href: "/", icon: Home },
-  { href: "/collection", icon: BookOpen },
-  { href: "/packs", icon: Sparkles },
-  { href: "/shop", icon: ShoppingCart },
-  { href: "/profile", icon: User },
+  { href: Private.Home, icon: Home },
+  { href: Private.Collection, icon: BookOpen },
+  { href: Private.Packs, icon: Sparkles },
+  { href: Private.Shop, icon: ShoppingCart },
+  { href: Private.Profile, icon: User },
 ]
 
 export function GameNavbar() {
@@ -38,8 +39,8 @@ export function GameNavbar() {
                   ? cn(
                     "nav-center-btn",
                     isActive
-                      ? "from-amber-700/90 to-amber-900 border-amber-600/30 text-amber-100"
-                      : "from-amber-800/70 to-amber-950 border-amber-700/20 text-amber-400/80 hover:from-amber-700/80 hover:text-amber-300",
+                      ? "from-amber-700 to-amber-900 border-amber-600/30 text-amber-100"
+                      : "from-amber-800 to-amber-950 border-amber-700/20 text-amber-400/80 hover:from-amber-700 hover:text-amber-300",
                   )
                   : isActive
                     ? "from-stone-500 to-stone-700 border-stone-500/30 text-stone-100"

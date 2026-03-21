@@ -93,7 +93,7 @@
 }
 
 :root {
-  --font-main: "Outfit", "Anuphan", sans-serif;
+  --font-main: "Outfit", sans-serif;
   --radius: 0.5rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -174,7 +174,14 @@
 }
 
 /* All interactive elements get pointer cursor */
-a, button, [role="button"], input[type="submit"], input[type="reset"], input[type="button"], select, summary {
+a,
+button,
+[role="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="button"],
+select,
+summary {
   cursor: pointer;
 }
 
@@ -185,15 +192,19 @@ a, button, [role="button"], input[type="submit"], input[type="reset"], input[typ
 
 /* Center nav button — subtle shine sweep */
 @keyframes center-shine {
-  0% { transform: translateX(-100%) rotate(20deg); }
-  100% { transform: translateX(200%) rotate(20deg); }
+  0% {
+    transform: translateX(-100%) rotate(20deg);
+  }
+  100% {
+    transform: translateX(200%) rotate(20deg);
+  }
 }
 
 .nav-center-btn {
   overflow: hidden;
 }
 .nav-center-btn::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(
@@ -208,4 +219,3 @@ a, button, [role="button"], input[type="submit"], input[type="reset"], input[typ
   animation: center-shine 3s ease-in-out infinite;
   pointer-events: none;
 }
-

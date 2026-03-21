@@ -1,8 +1,7 @@
+import { Env } from "@/lib/const/const.env"
 import usexAxios from "../../hook/use-xaxios"
 
-const JIKAN_BASE_URL = "https://api.jikan.moe/v4"
-
-export const api = usexAxios(JIKAN_BASE_URL)
+export const api = usexAxios(Env.jikanApiUrl)
 
 export interface JikanResponse<T> {
   data: T
