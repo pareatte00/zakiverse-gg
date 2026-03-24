@@ -1,18 +1,21 @@
-import { NextRequest } from "next/server"
+import { Cookie } from "@/lib/const/const.cookie"
+import { Route } from "@/lib/const/const.url"
+import { NextRequest, NextResponse } from "next/server"
 
 export default function middleware(req: NextRequest) {
-  // const accessToken = req.cookies.get(Cookie.accessToken)?.value
+  const accessToken = req.cookies.get(Cookie.accessToken)?.value
 
-  // if (accessToken) {
-  //   return NextResponse.next()
-  // }
+  if (accessToken) {
+    return NextResponse.next()
+  }
 
-  // const url = req.nextUrl.clone()
-  // url.pathname = Route.Public.Login
+  const url = req.nextUrl.clone()
 
-  // return NextResponse.redirect(url)
+  url.pathname = Route.Public.Login
+
+  return NextResponse.redirect(url)
 }
 
 export const config = {
-  matcher: [ "/((?!api|_next/static|_next/image|.*\\.png$|.*\\.ico$|login).*)" ],
+  matcher: [ "/((?!api|_next/static|_next/image|.*\\.png$|.*\\.ico$|login|auth).*)" ],
 }

@@ -60,10 +60,11 @@ export interface AnimeCharacter {
 }
 
 export interface Character {
-  mal_id: number
-  url:    string
-  images: Images
-  name:   string
+  mal_id:    number
+  url:       string
+  images:    Images
+  name:      string
+  favorites: number
 }
 
 export interface VoiceActor {
@@ -308,9 +309,22 @@ export async function getAnimeStreaming(id: number) {
   })
 }
 
-export async function searchAnime(query: string, page: number) {
+export type AnimeOrderBy = "mal_id" | "title" | "start_date" | "end_date" | "episodes" | "score" | "scored_by" | "rank" | "popularity" | "members" | "favorites"
+
+export type AnimeType = "tv" | "movie" | "ova" | "special" | "ona" | "music" | "cm" | "pv" | "tv_special"
+
+export interface SearchAnimeParams {
+  query:     string
+  page:      number
+  limit?:    number
+  order_by?: AnimeOrderBy
+  sort?:     "asc" | "desc"
+  type?:     AnimeType
+}
+
+export async function searchAnime({ query, page, limit, order_by, sort, type }: SearchAnimeParams) {
   return await api.get<JikanPaginateResponse<Anime[]>>({
     url:    `/anime`,
-    params: { q: query, page },
+    params: { q: query, page, limit, order_by, sort, type },
   })
 }

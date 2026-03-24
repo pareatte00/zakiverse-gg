@@ -1,8 +1,8 @@
 "use server"
 
 import { api, JikanPaginateResponse, JikanResponse } from "./api"
-import type { Images, Person, Picture } from "./api.types"
 import type { Anime } from "./api.anime"
+import type { Images, Person, Picture } from "./api.types"
 
 export interface CharacterFull {
   mal_id:     number
@@ -13,6 +13,7 @@ export interface CharacterFull {
   nicknames:  string[]
   favorites:  number
   about:      string
+  anime?:     CharacterAnime[]
 }
 
 export interface CharacterAnime {
@@ -73,9 +74,19 @@ export async function getCharacterPictures(id: number) {
   })
 }
 
-export async function searchCharacters(query: string, page: number) {
+export type CharacterOrderBy = "mal_id" | "name" | "favorites"
+
+export interface SearchCharactersParams {
+  query:     string
+  page:      number
+  limit?:    number
+  order_by?: CharacterOrderBy
+  sort?:     "asc" | "desc"
+}
+
+export async function searchCharacters({ query, page, limit, order_by, sort }: SearchCharactersParams) {
   return await api.get<JikanPaginateResponse<CharacterFull[]>>({
     url:    `/characters`,
-    params: { q: query, page },
+    params: { q: query, page, limit, order_by, sort },
   })
 }
