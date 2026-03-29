@@ -7,21 +7,20 @@ import { DashboardQuickActionGroup } from "@/components/admin/dashboard-quick-ac
 import { DashboardStatCard } from "@/components/admin/dashboard-stat-card"
 import type { AnimePayload } from "@/lib/api/db/api.anime"
 import { animeFindAll } from "@/lib/api/db/api.anime"
-import type { RarityPayload } from "@/lib/api/db/api.rarity"
-import { rarityFindAll } from "@/lib/api/db/api.rarity"
+import { RARITIES, RARITY_COLORS } from "@/lib/const/const.rarity"
 import { Admin } from "@/lib/const/const.url"
+import { cn } from "@/lib/utils"
 import { Film, Gift, Layers, List, Plus, Settings, Sparkles, Store, Users } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 interface DashboardData {
-  rarities:    RarityPayload[]
   recentAnime: AnimePayload[]
   animeTotal:  number
 }
 
 const CONTENT_ACTIONS: QuickActionItem[] = [
   { icon: Plus, label: "Create Cards", description: "Search characters and build new cards", href: Admin.Cards.Create },
-  { icon: List, label: "Manage Cards", description: "View and manage all created cards", href: Admin.Dashboard },
+  { icon: List, label: "Manage Cards", description: "View and manage all created cards", href: Admin.Cards.List },
   { icon: Sparkles, label: "Manage Rarities", description: "Configure rarity tiers and drop rates", href: Admin.Dashboard },
   { icon: Film, label: "Manage Anime", description: "View registered anime and their cards", href: Admin.Dashboard },
 ]
@@ -43,13 +42,9 @@ export default function AdminDashboardPage() {
 
     initialized.current = true
 
-    const [ rarityRes, animeRes ] = await Promise.all([
-      rarityFindAll(),
-      animeFindAll({ page: 1, limit: 5 }),
-    ])
+    const animeRes = await animeFindAll({ page: 1, limit: 5 })
 
     setData({
-      rarities:    rarityRes.response?.payload ?? [],
       recentAnime: animeRes.response?.payload ?? [],
       animeTotal:  animeRes.response?.meta?.total ?? animeRes.response?.payload?.length ?? 0,
     })
@@ -71,8 +66,8 @@ export default function AdminDashboardPage() {
           accent={"text-purple-400"}
           icon={Sparkles}
           label={"Rarity Tiers"}
-          loading={loading}
-          value={data?.rarities.length ?? 0}
+          loading={false}
+          value={RARITIES.length}
         />
 
         <DashboardStatCard
@@ -148,34 +143,16 @@ export default function AdminDashboardPage() {
           <div className={"rounded-xl border border-zinc-800/40 bg-zinc-900 p-5"}>
             <h3 className={"text-xs font-semibold uppercase tracking-wider text-zinc-500"}>Rarity Tiers</h3>
 
-            {loading
-              ? (
-                <div className={"mt-4 space-y-3"}>
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <div className={"h-10 animate-pulse rounded-lg bg-zinc-800"} key={i} />
-                  ))}
+            <div className={"mt-4 space-y-2"}>
+              {RARITIES.map((r) => (
+                <div
+                  className={"flex items-center rounded-lg bg-zinc-800/50 px-4 py-3"}
+                  key={r}
+                >
+                  <span className={cn("text-sm font-medium", RARITY_COLORS[r].text)}>{RARITY_COLORS[r].label}</span>
                 </div>
-              )
-              : data && data.rarities.length > 0
-                ? (
-                  <div className={"mt-4 space-y-2"}>
-                    {data.rarities.map((rarity) => (
-                      <div
-                        className={"flex items-center justify-between rounded-lg bg-zinc-800/50 px-4 py-3"}
-                        key={rarity.id}
-                      >
-                        <span className={"text-sm font-medium text-zinc-200"}>{rarity.name}</span>
-
-                        <span className={"text-xs text-zinc-500"}>
-                          {new Date(rarity.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )
-                : (
-                  <p className={"mt-4 text-sm text-zinc-600"}>No rarities configured yet.</p>
-                )}
+              ))}
+            </div>
           </div>
         </div>
       </div>

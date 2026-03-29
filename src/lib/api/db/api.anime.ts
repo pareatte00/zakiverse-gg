@@ -1,7 +1,7 @@
 "use server"
 
-import { Env } from "@/lib/const/const.env"
 import { Cookie } from "@/lib/const/const.cookie"
+import { Env } from "@/lib/const/const.env"
 import { findCookie } from "@/lib/hook/cookie"
 import { api, HttpResponse } from "./api"
 
@@ -11,8 +11,6 @@ export interface AnimePayload {
   title:       string
   synopsis:    string | null
   cover_image: string | null
-  created_at:  string
-  updated_at:  string
 }
 
 export interface CreateAnimeRequest {

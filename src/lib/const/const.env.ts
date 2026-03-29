@@ -3,6 +3,8 @@ export const Env = {
   apiUrl:           process.env.API_URL!,
   jikanApiUrl:      process.env.JIKAN_API_URL!,
   systemServiceKey: process.env.SYSTEM_SERVICE_KEY!,
+  imgbbApiUrl:      process.env.IMGBB_API_URL!,
+  imgbbApiKey:      process.env.IMGBB_API_KEY!,
   public:           {
     api:     process.env.NEXT_PUBLIC_API_URL!,
     discord: {

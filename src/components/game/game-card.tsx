@@ -4,7 +4,7 @@
 import { cn } from "@/lib/utils"
 import { useEffect, useRef, useState } from "react"
 
-type Rarity = "common" | "rare" | "epic" | "legendary" | "prismatic"
+export type Rarity = "common" | "rare" | "epic" | "legendary" | "prismatic"
 
 interface RarityConfig {
   border:         string
@@ -25,7 +25,7 @@ const RARITY_CONFIG: Record<Rarity, RarityConfig> = {
   common: {
     border:      "border-stone-600",
     borderColor: "border-stone-600",
-    borderWidth: "1.5cqw",
+    borderWidth: "2.5cqw",
     glow:        "",
     label:       "CORE",
     labelColor:  "text-stone-500",
@@ -37,7 +37,7 @@ const RARITY_CONFIG: Record<Rarity, RarityConfig> = {
   rare: {
     border:      "border-blue-500",
     borderColor: "border-blue-500",
-    borderWidth: "1.5cqw",
+    borderWidth: "2.5cqw",
     glow:        "shadow-[0_0_12px_rgba(59,130,246,0.4),0_0_24px_rgba(59,130,246,0.15)]",
     label:       "FLUX",
     labelColor:  "text-blue-400",
@@ -47,28 +47,30 @@ const RARITY_CONFIG: Record<Rarity, RarityConfig> = {
     sparkles:    false,
   },
   epic: {
-    border:      "border-purple-500",
-    borderColor: "border-purple-500",
-    borderWidth: "1.5cqw",
-    glow:        "shadow-[0_0_12px_rgba(168,85,247,0.3)]",
-    label:       "AURA",
-    labelColor:  "text-purple-400",
-    nameColor:   "text-purple-400",
-    pulseGlow:   "0 0 20px rgba(168,85,247,0.6), 0 0 40px rgba(168,85,247,0.25)",
-    shimmer:     false,
-    sparkles:    false,
+    border:        "border-transparent",
+    borderColor:   "border-purple-500",
+    borderWidth:   "2.5cqw",
+    glow:          "shadow-[0_0_12px_rgba(168,85,247,0.3)]",
+    label:         "AURA",
+    labelColor:    "text-purple-400",
+    nameColor:     "text-purple-400",
+    pulseGlow:     "0 0 20px rgba(168,85,247,0.6), 0 0 40px rgba(168,85,247,0.25)",
+    rainbowBorder: "linear-gradient(135deg, #a855f7, #7c3aed, #c084fc, #a855f7)",
+    shimmer:       false,
+    sparkles:      false,
   },
   legendary: {
-    border:      "border-amber-500",
-    borderColor: "border-amber-500",
-    borderWidth: "1.5cqw",
-    glow:        "shadow-[0_0_12px_rgba(245,158,11,0.3)]",
-    label:       "ZENITH",
-    labelColor:  "text-amber-400",
-    nameColor:   "text-amber-400",
-    pulseGlow:   "0 0 24px rgba(245,158,11,0.6), 0 0 48px rgba(245,158,11,0.3), 0 0 72px rgba(245,158,11,0.1)",
-    shimmer:     true,
-    sparkles:    false,
+    border:        "border-transparent",
+    borderColor:   "border-amber-500",
+    borderWidth:   "2.5cqw",
+    glow:          "shadow-[0_0_12px_rgba(245,158,11,0.3)]",
+    label:         "ZENITH",
+    labelColor:    "text-amber-400",
+    nameColor:     "text-amber-400",
+    pulseGlow:     "0 0 24px rgba(245,158,11,0.6), 0 0 48px rgba(245,158,11,0.3), 0 0 72px rgba(245,158,11,0.1)",
+    rainbowBorder: "linear-gradient(135deg, #ef4444, #f59e0b, #fde68a, #f59e0b, #ef4444)",
+    shimmer:       true,
+    sparkles:      false,
   },
   prismatic: {
     border:      "border-transparent",
@@ -126,11 +128,11 @@ const CARD_KEYFRAMES = `
 `
 
 function SlidingText({ children, className, containerClassName, hovered, style }: {
-  children:           React.ReactNode
-  className?:         string
+  children:            React.ReactNode
+  className?:          string
   containerClassName?: string
-  hovered?:           boolean
-  style?:             React.CSSProperties
+  hovered?:            boolean
+  style?:              React.CSSProperties
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLSpanElement>(null)
@@ -158,7 +160,7 @@ function SlidingText({ children, className, containerClassName, hovered, style }
   const shouldSlide = hovered && slideDistance > 0
 
   return (
-    <div className={cn("overflow-hidden", containerClassName)} ref={containerRef}>
+    <span className={cn("overflow-hidden", containerClassName)} ref={containerRef}>
       <span
         className={cn("inline-block whitespace-nowrap", className)}
         ref={textRef}
@@ -172,20 +174,22 @@ function SlidingText({ children, className, containerClassName, hovered, style }
       >
         {children}
       </span>
-    </div>
+    </span>
   )
 }
 
 interface GameCardProps {
+  actions?:         React.ReactNode
   anime?:           string
   backgroundImage?: string
   className?:       string
   image?:           string
   name:             string
   rarity?:          Rarity
+  static?:          boolean
 }
 
-export function GameCard({ name, anime, image, backgroundImage, rarity = "common", className }: GameCardProps) {
+export function GameCard({ name, anime, image, backgroundImage, rarity = "common", className, actions, static: isStatic = false }: GameCardProps) {
   const config = RARITY_CONFIG[rarity]
   const cardRef = useRef<HTMLDivElement>(null)
   const bgRef = useRef<HTMLImageElement>(null)
@@ -193,6 +197,8 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
   const shimmerRef = useRef<HTMLDivElement>(null)
   const [ expanded, setExpanded ] = useState(false)
   const [ hovered, setHovered ] = useState(false)
+  const touchActiveRef = useRef(false)
+  const touchTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
 
   function handleExpand() {
     const card = cardRef.current
@@ -205,24 +211,37 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
     setExpanded(true)
   }
 
-  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-    if (!hovered) setHovered(true)
+  function handleTouchStart() {
+    touchTimerRef.current = setTimeout(() => {
+      touchActiveRef.current = true
+    }, 100)
+  }
 
+  function handleTouchEnd() {
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current)
+
+    touchActiveRef.current = false
+    resetTilt()
+  }
+
+  function applyTilt(clientX: number, clientY: number) {
     const card = cardRef.current
     if (!card) return
 
+    if (!hovered) setHovered(true)
+
     const rect = card.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    const x = clientX - rect.left
+    const y = clientY - rect.top
     const centerX = rect.width / 2
     const centerY = rect.height / 2
-    const rotateY = ((x - centerX) / centerX) * 15
-    const rotateX = ((centerY - y) / centerY) * 15
+    const maxAngle = 15
+    const rotateY = Math.max(-maxAngle, Math.min(maxAngle, ((x - centerX) / centerX) * maxAngle))
+    const rotateX = Math.max(-maxAngle, Math.min(maxAngle, ((centerY - y) / centerY) * maxAngle))
 
     card.style.transform = `perspective(600px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`
     card.style.transition = "transform 0.1s ease"
 
-    // Parallax layers for prismatic 2.5D
     if (bgRef.current) {
       const bx = ((x - centerX) / centerX) * -4
       const by = ((y - centerY) / centerY) * -4
@@ -235,7 +254,6 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
       fgRef.current.style.transform = `scale(1.1) translate(${fx}px, ${fy}px)`
     }
 
-    // Holo color shift follows cursor
     if (shimmerRef.current) {
       const hue = ((x / rect.width) + (y / rect.height)) * 180
       shimmerRef.current.style.filter = `hue-rotate(${hue}deg)`
@@ -243,7 +261,7 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
     }
   }
 
-  function handleMouseLeave() {
+  function resetTilt() {
     setHovered(false)
 
     const card = cardRef.current
@@ -268,6 +286,27 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
     }
   }
 
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    applyTilt(e.clientX, e.clientY)
+  }
+
+  function handleTouchMove(e: TouchEvent) {
+    if (!touchActiveRef.current) return
+
+    e.preventDefault()
+    const touch = e.touches[0]
+    if (touch) applyTilt(touch.clientX, touch.clientY)
+  }
+
+  useEffect(() => {
+    const card = cardRef.current
+    if (!card) return
+
+    card.addEventListener("touchmove", handleTouchMove, { passive: false })
+
+    return () => card.removeEventListener("touchmove", handleTouchMove)
+  })
+
   return (
     <>
       <style>{CARD_KEYFRAMES}</style>
@@ -290,7 +329,7 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
             "aspect-[2/3] pointer-events-auto",
             expanded
               ? "w-64"
-              : cn("w-40 cursor-pointer", className),
+              : cn("w-40", !isStatic && "cursor-pointer", className),
           )}
           ref={cardRef}
           style={{
@@ -298,9 +337,11 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
             transformStyle: "preserve-3d",
             animation:      expanded ? "gc-fade-in 0.2s ease" : undefined,
           }}
-          onClick={!expanded ? handleExpand : undefined}
-          onMouseLeave={handleMouseLeave}
-          onMouseMove={handleMouseMove}
+          onClick={!isStatic && !expanded ? handleExpand : undefined}
+          onMouseLeave={!isStatic ? resetTilt : undefined}
+          onMouseMove={!isStatic ? handleMouseMove : undefined}
+          onTouchEnd={!isStatic ? handleTouchEnd : undefined}
+          onTouchStart={!isStatic ? handleTouchStart : undefined}
         >
           {/* Pulsing glow layer */}
           {config.pulseGlow && (
@@ -319,7 +360,7 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
               className={"absolute inset-0 rounded-[8cqw]"}
               style={{
                 background: config.rainbowBorder,
-                animation:  "gc-rainbow 4s linear infinite",
+                animation:  rarity === "prismatic" ? "gc-rainbow 4s linear infinite" : undefined,
               }}
             />
           )}
@@ -327,7 +368,7 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
           {/* Card body */}
           <div
             className={cn(
-              "relative h-full overflow-hidden rounded-[8cqw]",
+              "relative h-full select-none overflow-hidden rounded-[8cqw]",
               "bg-stone-900",
               config.border,
               config.glow,
@@ -337,6 +378,8 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
               backgroundClip: config.rainbowBorder ? "padding-box" : undefined,
             }}
           >
+            {/* Dupe level badge */}
+
             {/* Art area */}
             <div className={"relative h-full overflow-hidden bg-stone-800"}>
               {backgroundImage && image
@@ -344,7 +387,8 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
                   <>
                     <img
                       alt={""}
-                      className={"absolute inset-0 h-full w-full object-cover"}
+                      className={"pointer-events-none absolute inset-0 h-full w-full object-cover"}
+                      draggable={false}
                       ref={bgRef}
                       src={backgroundImage}
                       style={{ transform: "scale(1.15)", transition: "transform 0.1s ease" }}
@@ -352,7 +396,8 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
 
                     <img
                       alt={name}
-                      className={"absolute inset-0 h-full w-full object-contain"}
+                      className={"pointer-events-none absolute inset-0 h-full w-full object-contain"}
+                      draggable={false}
                       ref={fgRef}
                       src={image}
                       style={{ transform: "scale(1.1)", transition: "transform 0.1s ease" }}
@@ -363,7 +408,8 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
                   ? (
                     <img
                       alt={name}
-                      className={"h-full w-full object-cover"}
+                      className={"pointer-events-none h-full w-full scale-105 object-cover"}
+                      draggable={false}
                       src={image}
                     />
                   )
@@ -388,36 +434,34 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
 
             {/* Info overlay */}
             <div
-              className={"pointer-events-none absolute inset-x-0 bottom-0"}
+              className={"relative pointer-events-none absolute inset-x-0 bottom-[50cqw]!"}
               style={{
-                padding:    "3cqw",
-                paddingTop: "16cqw",
-                background: "linear-gradient(to top, rgba(12,10,9,0.95) 0%, rgba(12,10,9,0.7) 50%, transparent 100%)",
+                height:     "35%",
+                background: "linear-gradient(to top, rgba(12,10,9,0.95) 0%, rgba(12,10,9,0.75) 45%, transparent 100%)",
               }}
             >
-              <div className={"px-[2cqw] pb-[1cqw]"}>
-                <SlidingText
-                  className={cn("font-semibold leading-none", config.nameColor)}
-                  containerClassName={"mb-[-2cqw] h-[9cqw]"}
-                  hovered={hovered}
-                  style={{
-                    fontSize: "8cqw",
-                    ...config.nameStyle,
-                  }}
-                >
-                  {name}
-                </SlidingText>
+              <SlidingText
+                className={cn("font-semibold leading-none", config.nameColor)}
+                containerClassName={"absolute left-[5cqw] right-[5cqw] bottom-[13cqw]"}
+                hovered={hovered}
+                style={{
+                  fontSize: "8cqw",
+                  ...config.nameStyle,
+                }}
+              >
+                {name}
+              </SlidingText>
 
-                {anime && (
-                  <SlidingText
-                    className={"text-stone-500 italic"}
-                    hovered={hovered}
-                    style={{ fontSize: "5.5cqw", marginTop: "1.5cqw" }}
-                  >
-                    {anime}
-                  </SlidingText>
-                )}
-              </div>
+              {anime && (
+                <SlidingText
+                  className={"text-stone-500 italic leading-none"}
+                  containerClassName={"absolute left-[5cqw] right-[5cqw] bottom-[5cqw]"}
+                  hovered={hovered}
+                  style={{ fontSize: "6cqw" }}
+                >
+                  {anime}
+                </SlidingText>
+              )}
             </div>
 
             {/* Holo color shift — follows cursor */}
@@ -451,6 +495,15 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
                 }}
               />
             ))}
+
+            {/* Actions overlay */}
+            {actions && (
+              <div className={"pointer-events-none absolute inset-0 z-20 opacity-0 transition-opacity [*:hover>&]:pointer-events-auto [*:hover>&]:opacity-100"}>
+                <div className={"absolute right-[4cqw] top-[4cqw] flex flex-col gap-[2cqw]"}>
+                  {actions}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

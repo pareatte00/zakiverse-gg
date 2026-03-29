@@ -27,13 +27,15 @@ export interface BuilderCardData {
   anime_options: BuilderAnimeOption[]
 
   // User selections
-  selected_image: string
-  display_name:   string
-  rarity_id:      string
-  selected_anime: BuilderAnimeOption | null
-  config:         Record<string, any>
-  status:         "idle" | "creating" | "success" | "error"
-  error_message:  string
+  selected_image:      string
+  selected_background: string
+  custom_images:       string[]
+  display_name:        string
+  rarity_id:           string
+  selected_anime:      BuilderAnimeOption | null
+  config:              Record<string, any>
+  status:              "idle" | "creating" | "success" | "error"
+  error_message:       string
 }
 
 export interface BuilderAnimeOption {

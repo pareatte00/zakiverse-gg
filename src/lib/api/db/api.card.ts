@@ -1,41 +1,70 @@
 "use server"
 
-import { Env } from "@/lib/const/const.env"
+import type { Rarity } from "@/components/game/game-card"
 import { Cookie } from "@/lib/const/const.cookie"
+import { Env } from "@/lib/const/const.env"
 import { findCookie } from "@/lib/hook/cookie"
 import { api, HttpResponse } from "./api"
+import type { AnimePayload } from "./api.anime"
+
+export interface CardConfig {
+  background_image?: string
+}
 
 export interface CardPayload {
-  id:         string
-  mal_id:     number
-  anime_id:   string
-  rarity_id:  string
-  name:       string
-  image:      string
-  config:     Record<string, any>
-  created_at: string
-  updated_at: string
+  id:     string
+  mal_id: number
+  rarity: Rarity
+  name:   string
+  image:  string
+  config: CardConfig
+  anime:  AnimePayload
 }
 
 export interface CreateCardRequest {
-  mal_id:    number
-  anime_id:  string
-  rarity_id: string
-  name:      string
-  image:     string
-  config:    string
+  mal_id:             number
+  rarity:             Rarity
+  name:               string
+  image:              string
+  config:             CardConfig
+  anime_mal_id:       number
+  anime_title:        string
+  anime_synopsis?:    string
+  anime_cover_image?: string
 }
 
 export interface UpdateCardRequest {
-  rarity_id: string
-  name:      string
-  image:     string
-  config:    string
+  rarity?: Rarity
+  name?:   string
+  image?:  string
+  config?: CardConfig
 }
 
 export interface PaginationQuery {
   page:  number
   limit: number
+}
+
+export type CardSortField = "name" | "rarity"
+
+export type CardSortOrder = "asc" | "desc"
+
+export interface CardFindAllQuery extends PaginationQuery {
+  search?: string
+  rarity?: Rarity
+  sort?:   CardSortField
+  order?:  CardSortOrder
+}
+
+export async function cardFindAll(query: CardFindAllQuery) {
+  const token = await findCookie(Cookie.accessToken)
+
+  return await api.get<HttpResponse<CardPayload[]>>({
+    url:         "/v1/card",
+    data:        query,
+    bearerToken: token,
+    serviceKey:  Env.systemServiceKey,
+  })
 }
 
 export async function cardFindAllByAnimeId(animeId: string, query: PaginationQuery) {
@@ -73,7 +102,7 @@ export async function cardCreateOne(param: CreateCardRequest) {
 export async function cardUpdateOneById(id: string, param: UpdateCardRequest) {
   const token = await findCookie(Cookie.accessToken)
 
-  return await api.put<HttpResponse<CardPayload>>({
+  return await api.patch<HttpResponse<CardPayload>>({
     url:         `/v1/card/${id}`,
     data:        param,
     bearerToken: token,

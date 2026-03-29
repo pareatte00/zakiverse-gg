@@ -10,11 +10,23 @@ export default function HomePage() {
       <h1 className={"text-xl font-bold text-stone-100"}>Home</h1>
       <p className={"mt-2 text-sm text-stone-500"}>Zakiverse</p>
 
-      {/* All 5 rarities */}
-      <div className={"mt-6"}>
+      <div className={"mt-8"}>
         <h2 className={"mb-3 text-sm font-semibold text-stone-400"}>All Rarities</h2>
 
-        <div className={"grid grid-cols-2 gap-6"}>
+        <div className={"grid grid-cols-3 gap-4"}>
+          <GameCard anime={"Jujutsu Kaisen"} className={"w-full"} image={ITADORI_IMAGE} name={"Itadori Yuuji"} rarity={"common"} />
+          <GameCard anime={"Jujutsu Kaisen"} className={"w-full"} image={ITADORI_IMAGE} name={"Itadori Yuuji"} rarity={"rare"} />
+          <GameCard anime={"Fullmetal Alchemist: Brotherhood"} className={"w-full"} image={ITADORI_IMAGE} name={"Edward Elric The Fullmetal Alchemist"} rarity={"epic"} />
+          <GameCard anime={"Jujutsu Kaisen"} className={"w-full"} image={ITADORI_IMAGE} name={"Itadori Yuuji"} rarity={"legendary"} />
+          <GameCard anime={"Jujutsu Kaisen"} backgroundImage={JJK_BACKGROUND} className={"w-full"} image={ITADORI_TRANSPARENT} name={"Itadori Yuuji"} rarity={"prismatic"} />
+        </div>
+      </div>
+
+      {/* All 5 rarities */}
+      <div className={"mt-8"}>
+        <h2 className={"mb-3 text-sm font-semibold text-stone-400"}>All Rarities</h2>
+
+        <div className={"grid grid-cols-2 gap-4"}>
           <GameCard anime={"Jujutsu Kaisen"} className={"w-full"} image={ITADORI_IMAGE} name={"Itadori Yuuji"} rarity={"common"} />
           <GameCard anime={"Jujutsu Kaisen"} className={"w-full"} image={ITADORI_IMAGE} name={"Itadori Yuuji"} rarity={"rare"} />
           <GameCard anime={"Fullmetal Alchemist: Brotherhood"} className={"w-full"} image={ITADORI_IMAGE} name={"Edward Elric The Fullmetal Alchemist"} rarity={"epic"} />

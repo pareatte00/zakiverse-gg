@@ -3,6 +3,7 @@
 import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { DraftSidebar } from "@/components/admin/cards/draft-sidebar"
 import { UserProvider } from "@/components/provider/UserProvider"
+import { Toaster } from "@/components/ui/sonner"
 import { CardCreationProvider } from "@/lib/context/card-creation-context"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -19,6 +20,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <DraftSidebar />
         </div>
       </CardCreationProvider>
+
+      <Toaster />
     </UserProvider>
   )
 }

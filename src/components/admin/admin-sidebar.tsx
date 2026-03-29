@@ -1,9 +1,10 @@
 "use client"
 
 import { GameButton } from "@/components/game/game-button"
+import { Badge } from "@/components/ui/badge"
 import { Admin, Private } from "@/lib/const/const.url"
 import { useCardCreation } from "@/lib/context/card-creation-context"
-import { CreditCard, FileStack, Gamepad2, LayoutDashboard, Plus } from "lucide-react"
+import { CreditCard, FileStack, Gamepad2, Layers, LayoutDashboard, Plus } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -25,7 +26,10 @@ const NAV: NavGroup[] = [
   },
   {
     label: "Cards",
-    items: [ { label: "Create Cards", href: Admin.Cards.Create, icon: Plus } ],
+    items: [
+      { label: "Manage Cards", href: Admin.Cards.List, icon: Layers },
+      { label: "Create Cards", href: Admin.Cards.Create, icon: Plus },
+    ],
   },
 ]
 
@@ -42,9 +46,9 @@ function DraftToggleButton() {
       Draft
 
       {draft.length > 0 && (
-        <span className={"ml-auto rounded-full bg-amber-500/15 px-1.5 py-0.5 text-xs font-semibold text-amber-400"}>
+        <Badge className={"ml-auto bg-amber-500/15 text-amber-400 hover:bg-amber-500/20"} variant={"secondary"}>
           {draft.length}
-        </span>
+        </Badge>
       )}
     </GameButton>
   )
@@ -54,28 +58,28 @@ export function AdminSidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className={"flex w-64 shrink-0 flex-col border-r border-zinc-800/40 bg-zinc-900"}>
+    <aside className={"flex w-64 shrink-0 flex-col border-r border-border bg-card"}>
       {/* Branding */}
-      <div className={"flex items-center gap-2 border-b border-zinc-800/40 px-5 py-4"}>
+      <div className={"flex items-center gap-2 border-b border-border px-5 py-4"}>
         <CreditCard className={"h-5 w-5 text-amber-500"} />
-        <span className={"text-sm font-bold tracking-wider text-zinc-100"}>ZAKIVERSE</span>
+        <span className={"text-sm font-bold tracking-wider text-foreground"}>ZAKIVERSE</span>
 
-        <span className={"rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400"}>
+        <Badge className={"bg-amber-500/15 text-amber-400 hover:bg-amber-500/20"} variant={"secondary"}>
           ADMIN
-        </span>
+        </Badge>
       </div>
 
       {/* Navigation */}
       <nav className={"flex-1 space-y-6 px-3 py-4"}>
         {NAV.map((group) => (
           <div key={group.label}>
-            <p className={"mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500"}>
+            <p className={"mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"}>
               {group.label}
             </p>
 
-            <div className={"space-y-1.5"}>
+            <div className={"space-y-3"}>
               {group.items.map((item) => {
-                const isActive = item.href === Admin.Dashboard
+                const isActive = item.href === Admin.Dashboard || item.href === Admin.Cards.List
                   ? pathname === item.href
                   : pathname === item.href || pathname.startsWith(item.href + "/")
 
@@ -100,12 +104,12 @@ export function AdminSidebar() {
       </nav>
 
       {/* Draft toggle */}
-      <div className={"border-t border-zinc-800/40 px-3 py-3"}>
+      <div className={"border-t border-border px-3 py-3"}>
         <DraftToggleButton />
       </div>
 
       {/* Back to game */}
-      <div className={"border-t border-zinc-800/40 px-3 py-3"}>
+      <div className={"border-t border-border px-3 py-3"}>
         <GameButton
           asChild
           className={"w-full justify-start"}

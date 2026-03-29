@@ -1,6 +1,7 @@
 "use client"
 
 import { GameButton, GameButtonGroup } from "@/components/game/game-button"
+import { Input } from "@/components/ui/input"
 import type { Pagination } from "@/lib/api/jikan/api"
 import type { CharacterFull, CharacterOrderBy } from "@/lib/api/jikan/api.character"
 import { searchCharacters } from "@/lib/api/jikan/api.character"
@@ -101,27 +102,25 @@ export function CharacterSearchTab() {
 
           {pagination && pagination.last_visible_page > 1 && (
             <div className={"mt-6 flex items-center justify-center gap-2"}>
-              <button
-                className={"rounded-lg bg-zinc-800 px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200 disabled:opacity-40"}
+              <GameButton
                 disabled={page <= 1}
-                type={"button"}
+                variant={"ghost"}
                 onClick={() => handlePageChange(page - 1)}
               >
                 Prev
-              </button>
+              </GameButton>
 
               <span className={"text-sm text-zinc-500"}>
                 {page} / {pagination.last_visible_page}
               </span>
 
-              <button
-                className={"rounded-lg bg-zinc-800 px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200 disabled:opacity-40"}
+              <GameButton
                 disabled={!pagination.has_next_page}
-                type={"button"}
+                variant={"ghost"}
                 onClick={() => handlePageChange(page + 1)}
               >
                 Next
-              </button>
+              </GameButton>
             </div>
           )}
         </>
@@ -139,10 +138,10 @@ export function CharacterSearchTab() {
     <div>
       {/* Search input */}
       <div className={"relative"}>
-        <Search className={"absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"} />
+        <Search className={"absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"} />
 
-        <input
-          className={"w-full rounded-lg border border-zinc-700/50 bg-zinc-800 py-2.5 pl-10 pr-4 text-sm text-zinc-200 placeholder:text-zinc-500 focus:border-zinc-600 focus:outline-none"}
+        <Input
+          className={"pl-10"}
           placeholder={"Search characters..."}
           type={"text"}
           value={query}

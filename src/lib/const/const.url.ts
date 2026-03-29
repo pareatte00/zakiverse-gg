@@ -15,9 +15,10 @@ export const Private = {
 export const Admin = {
   Dashboard: "/admin",
   Cards:     {
+    List:    "/admin/cards",
     Create:  "/admin/cards/create",
-    Draft:   "/admin/cards/create/draft",
     Builder: "/admin/cards/create/builder",
+    Edit:    (id: string) => `/admin/cards/${id}/edit` as const,
   },
 } as const
 
