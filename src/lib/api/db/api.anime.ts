@@ -42,6 +42,7 @@ export async function animeFindAll(query: PaginationQuery) {
   })
 }
 
+// deprecated.
 export async function animeFindOneById(id: string) {
   const token = await findCookie(Cookie.accessToken)
 

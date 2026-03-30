@@ -23,9 +23,9 @@ export function ImagePicker({ defaultImage, pictures, selected, onSelect, custom
   const [ validating, setValidating ] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const allImages = [
-    defaultImage,
-    ...pictures.map((p) => p.jpg.image_url).filter((url) => url !== defaultImage),
-    ...customImages.filter((url) => url !== defaultImage),
+    ...(defaultImage ? [ defaultImage ] : []),
+    ...pictures.map((p) => p.jpg.image_url).filter((url) => url && url !== defaultImage),
+    ...customImages.filter((url) => url && url !== defaultImage),
   ]
 
   function addCustomImage(url: string) {

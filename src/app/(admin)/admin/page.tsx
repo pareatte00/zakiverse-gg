@@ -25,7 +25,7 @@ const CONTENT_ACTIONS: QuickActionItem[] = [
   { icon: Film, label: "Manage Anime", description: "View registered anime and their cards", href: Admin.Dashboard },
 ]
 const GAME_ACTIONS: QuickActionItem[] = [
-  { icon: Gift, label: "Manage Packs", description: "Create and configure card packs", href: Admin.Dashboard },
+  { icon: Gift, label: "Manage Packs", description: "Create and configure card packs", href: Admin.Packs.List },
   { icon: Store, label: "Manage Shop", description: "Configure shop items and pricing", href: Admin.Dashboard },
 ]
 const SYSTEM_ACTIONS: QuickActionItem[] = [

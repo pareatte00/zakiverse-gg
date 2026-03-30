@@ -2,11 +2,14 @@
 
 import { GameButton } from "@/components/game/game-button"
 import { Badge } from "@/components/ui/badge"
-import { Admin, Private } from "@/lib/const/const.url"
+import { Cookie } from "@/lib/const/const.cookie"
+import { Admin, Private, Public } from "@/lib/const/const.url"
 import { useCardCreation } from "@/lib/context/card-creation-context"
-import { CreditCard, FileStack, Gamepad2, Layers, LayoutDashboard, Plus } from "lucide-react"
+import { deleteCookie } from "@/lib/hook/cookie"
+import { CreditCard, FileStack, Gamepad2, Gift, Layers, LayoutDashboard, LogOut, Plus } from "lucide-react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface NavItem {
   label: string
@@ -29,6 +32,13 @@ const NAV: NavGroup[] = [
     items: [
       { label: "Manage Cards", href: Admin.Cards.List, icon: Layers },
       { label: "Create Cards", href: Admin.Cards.Create, icon: Plus },
+    ],
+  },
+  {
+    label: "Packs",
+    items: [
+      { label: "Manage Packs", href: Admin.Packs.List, icon: Gift },
+      { label: "Create Pack", href: Admin.Packs.Create, icon: Plus },
     ],
   },
 ]
@@ -56,6 +66,14 @@ function DraftToggleButton() {
 
 export function AdminSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  async function handleLogout() {
+    await deleteCookie(Cookie.accessToken)
+    await deleteCookie(Cookie.refreshToken)
+    toast.success("Logged out")
+    router.push(Public.Login)
+  }
 
   return (
     <aside className={"flex w-64 shrink-0 flex-col border-r border-border bg-card"}>
@@ -79,7 +97,7 @@ export function AdminSidebar() {
 
             <div className={"space-y-3"}>
               {group.items.map((item) => {
-                const isActive = item.href === Admin.Dashboard || item.href === Admin.Cards.List
+                const isActive = item.href === Admin.Dashboard || item.href === Admin.Cards.List || item.href === Admin.Packs.List
                   ? pathname === item.href
                   : pathname === item.href || pathname.startsWith(item.href + "/")
 
@@ -109,7 +127,7 @@ export function AdminSidebar() {
       </div>
 
       {/* Back to game */}
-      <div className={"border-t border-border px-3 py-3"}>
+      <div className={"space-y-3 border-t border-border px-3 py-3"}>
         <GameButton
           asChild
           className={"w-full justify-start"}
@@ -119,6 +137,15 @@ export function AdminSidebar() {
             <Gamepad2 className={"h-4 w-4"} />
             Back to Game
           </Link>
+        </GameButton>
+
+        <GameButton
+          className={"w-full justify-start hover:!text-red-400"}
+          variant={"ghost"}
+          onClick={() => void handleLogout()}
+        >
+          <LogOut className={"h-4 w-4"} />
+          Logout
         </GameButton>
       </div>
     </aside>

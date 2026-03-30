@@ -54,6 +54,7 @@ export const GameButton = forwardRef<HTMLButtonElement, GameButtonProps>(({ clas
         styles.layout,
         styles.base,
         "transition-all duration-50",
+        "disabled:pointer-events-none disabled:opacity-40 disabled:translate-y-0 disabled:shadow-none",
         pressed
           ? "translate-y-[4px] shadow-none"
           : cn(

@@ -1,8 +1,9 @@
 "use client"
 
+import { accountGetMe } from "@/lib/api/db/api.account"
 import { authDiscord } from "@/lib/api/db/api.auth"
 import { Cookie } from "@/lib/const/const.cookie"
-import { Private, Public } from "@/lib/const/const.url"
+import { Admin, Private, Public } from "@/lib/const/const.url"
 import { setCookie } from "@/lib/hook/cookie"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useRef, useState } from "react"
@@ -35,6 +36,26 @@ function CallbackHandler() {
         }
 
         await setCookie(Cookie.accessToken, response.payload.access_token)
+
+        // Check if admin login was requested
+        const wantsAdmin = localStorage.getItem("zakiverse_admin_login")
+
+        localStorage.removeItem("zakiverse_admin_login")
+
+        if (wantsAdmin) {
+          const me = await accountGetMe()
+
+          if (me.status < 400 && me.response?.payload?.role === "admin") {
+            router.replace(Admin.Dashboard)
+
+            return
+          }
+
+          setError("You do not have admin access.")
+
+          return
+        }
+
         router.replace(Private.Home)
       })
       .catch(() => {

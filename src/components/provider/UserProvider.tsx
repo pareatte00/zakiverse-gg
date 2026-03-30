@@ -1,6 +1,8 @@
 "use client"
 
+import { SessionExpiredModal } from "@/components/session-expired-modal"
 import { accountGetMe, type AccountMePayload } from "@/lib/api/db/api.account"
+import { checkSession } from "@/lib/session"
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 
 interface UserContextValue {
@@ -16,6 +18,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void accountGetMe().then(({ response, status }) => {
+      checkSession(status)
+
       if (status < 400 && response?.payload) {
         setUser(response.payload)
       }
@@ -25,6 +29,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   return (
     <UserContext value={{ user, loading }}>
       {children}
+      <SessionExpiredModal />
     </UserContext>
   )
 }
