@@ -60,7 +60,6 @@ export default function EditPackPage() {
   const [ searchLoading, setSearchLoading ] = useState(false)
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
   const [ expandedRarities, setExpandedRarities ] = useState<Set<string>>(new Set(RARITIES))
-
   // Load pack data
   const loadPack = useCallback(async () => {
     if (initialized.current) return

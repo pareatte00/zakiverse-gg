@@ -10,30 +10,51 @@ export interface PackConfig {
   pity?:        Record<string, number>
 }
 
+export interface PackCardAnimePayload {
+  title:       string
+  cover_image: string | null
+}
+
 export interface PackCardPayload {
-  id:      string
-  card_id: string
-  weight:  number
+  id:            string
+  card_id:       string
+  weight:        number
+  is_featured:   boolean
+  featured_rate: number | null
+  name:          string
+  image:         string
+  rarity:        string
+  anime:         PackCardAnimePayload
 }
 
 export interface PackPayload {
   id:             string
+  code:           string
   name:           string
   description:    string | null
   image:          string
+  name_image:     string | null
+  type:           "standard" | "limited" | "event"
   cards_per_pull: number
+  sort_order:     number
   is_active:      boolean
   open_at:        string | null
   close_at:       string | null
   config:         PackConfig
+  pool_id:        string | null
+  total_cards:    number
   cards?:         PackCardPayload[]
 }
 
 export interface CreatePackRequest {
+  code:           string
   name:           string
   description?:   string
   image:          string
+  name_image?:    string
+  type:           "standard" | "limited" | "event"
   cards_per_pull: number
+  sort_order?:    number
   is_active:      boolean
   open_at?:       string
   close_at?:      string
@@ -41,25 +62,33 @@ export interface CreatePackRequest {
 }
 
 export interface UpdatePackRequest {
+  code?:           string
   name?:           string
   description?:    string
   image?:          string
+  name_image?:     string
+  type?:           "standard" | "limited" | "event"
   cards_per_pull?: number
+  sort_order?:     number
   is_active?:      boolean
   open_at?:        string
   close_at?:       string
   config?:         PackConfig
+  pool_id?:        string
 }
 
 export interface PackFindAllQuery {
   active_only?: boolean
+  type?:        "standard" | "limited" | "event"
   page:         number
   limit:        number
 }
 
 export interface AddPackCardsRequestItem {
-  card_id: string
-  weight:  number
+  card_id:        string
+  weight:         number
+  is_featured:    boolean
+  featured_rate?: number
 }
 
 export interface AddPackCardsRequest {
@@ -71,10 +100,11 @@ export interface RemovePackCardsRequest {
 }
 
 export interface PulledCardPayload {
-  card_id: string
-  rarity:  string
-  is_new:  boolean
-  is_pity: boolean
+  card_id:     string
+  rarity:      string
+  is_new:      boolean
+  is_pity:     boolean
+  is_featured: boolean
 }
 
 export interface PullResultPayload {
@@ -156,11 +186,14 @@ export async function packRemoveCards(id: string, param: RemovePackCardsRequest)
   })
 }
 
-export async function packPull(id: string) {
+export type PullMode = "single" | "multi"
+
+export async function packPull(id: string, mode: PullMode) {
   const token = await findCookie(Cookie.accessToken)
 
   return await api.post<HttpResponse<PullResultPayload>>({
     url:         `/v1/pack/${id}/pull`,
+    data:        { mode },
     bearerToken: token,
     serviceKey:  Env.systemServiceKey,
   })

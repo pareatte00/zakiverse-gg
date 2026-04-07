@@ -6,7 +6,7 @@ type GameButtonVariant = "default" | "ghost" | "amber" | "discord" | "danger"
 
 const VARIANT_STYLES: Record<GameButtonVariant, { layout: string, base: string, shadow: string, hoverShadow: string }> = {
   default: {
-    layout:      "rounded-2xl px-6 py-4 font-semibold",
+    layout:      "rounded-lg px-6 py-4 font-semibold",
     base:        "bg-stone-700 text-stone-100",
     shadow:      "shadow-[0_4px_0_0_rgba(87,83,78,0.9)]",
     hoverShadow: "hover:shadow-[0_4px_0_0_rgba(87,83,78,0.9),0_8px_16px_rgba(0,0,0,0.2)]",

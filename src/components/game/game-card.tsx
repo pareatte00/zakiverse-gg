@@ -323,13 +323,13 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
       )}
 
       {/* Centering wrapper when expanded, transparent to layout when not */}
-      <div className={cn(expanded && "fixed inset-0 z-50 flex items-center justify-center pointer-events-none")}>
+      <div className={cn(expanded ? "fixed inset-0 z-50 flex items-center justify-center pointer-events-none" : cn("contents", className))}>
         <div
           className={cn(
             "aspect-[2/3] pointer-events-auto",
             expanded
               ? "w-64"
-              : cn("w-40", !isStatic && "cursor-pointer", className),
+              : cn("w-full", !isStatic && "cursor-pointer"),
           )}
           ref={cardRef}
           style={{

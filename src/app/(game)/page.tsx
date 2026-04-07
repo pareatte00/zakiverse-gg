@@ -1,39 +1,66 @@
-import { GameCard } from "@/components/game/game-card"
+"use client"
 
-const ITADORI_IMAGE = "https://cdn.myanimelist.net/images/characters/6/467646.jpg"
-const ITADORI_TRANSPARENT = "https://www.pngall.com/wp-content/uploads/15/Jujutsu-Kaisen-PNG-Clipart.png"
-const JJK_BACKGROUND = "https://images2.alphacoders.com/114/1140467.jpg"
+import { GameCard } from "@/components/game/game-card"
+import { PackCard } from "@/components/game/pack-card"
+import type { PackPayload } from "@/lib/api/db/api.pack"
+
+const DEMO_PACK: PackPayload = {
+  id:             "demo-1",
+  code:           "JJK-001",
+  name:           "Jujutsu Kaisen",
+  description:    null,
+  image:          "https://images4.alphacoders.com/125/1258153.jpg",
+  name_image:     null,
+  type:           "standard",
+  cards_per_pull: 5,
+  sort_order:     0,
+  is_active:      true,
+  open_at:        null,
+  close_at:       null,
+  config:         { rarity_rates: { common: 60, rare: 25, epic: 10, legendary: 4, prismatic: 1 }},
+  pool_id:        null,
+  total_cards:    50,
+}
+const DEMO_CARD = {
+  name:            "Gojo Satoru",
+  anime:           "Jujutsu Kaisen",
+  image:           "https://www.pngall.com/wp-content/uploads/15/Jujutsu-Kaisen-PNG-Clipart.png",
+  backgroundImage: "https://images2.alphacoders.com/114/1140467.jpg",
+}
+const RARITIES = [ "common", "rare", "epic", "legendary", "prismatic" ] as const
+
+function noop() {}
 
 export default function HomePage() {
   return (
-    <div className={"p-4"}>
-      <h1 className={"text-xl font-bold text-stone-100"}>Home</h1>
-      <p className={"mt-2 text-sm text-stone-500"}>Zakiverse</p>
-
-      <div className={"mt-8"}>
-        <h2 className={"mb-3 text-sm font-semibold text-stone-400"}>All Rarities</h2>
-
-        <div className={"grid grid-cols-3 gap-4"}>
-          <GameCard anime={"Jujutsu Kaisen"} className={"w-full"} image={ITADORI_IMAGE} name={"Itadori Yuuji"} rarity={"common"} />
-          <GameCard anime={"Jujutsu Kaisen"} className={"w-full"} image={ITADORI_IMAGE} name={"Itadori Yuuji"} rarity={"rare"} />
-          <GameCard anime={"Fullmetal Alchemist: Brotherhood"} className={"w-full"} image={ITADORI_IMAGE} name={"Edward Elric The Fullmetal Alchemist"} rarity={"epic"} />
-          <GameCard anime={"Jujutsu Kaisen"} className={"w-full"} image={ITADORI_IMAGE} name={"Itadori Yuuji"} rarity={"legendary"} />
-          <GameCard anime={"Jujutsu Kaisen"} backgroundImage={JJK_BACKGROUND} className={"w-full"} image={ITADORI_TRANSPARENT} name={"Itadori Yuuji"} rarity={"prismatic"} />
-        </div>
+    <div className={"space-y-10 p-4"}>
+      <div>
+        <h1 className={"text-xl font-bold text-stone-100"}>Design Preview</h1>
       </div>
 
-      {/* All 5 rarities */}
-      <div className={"mt-8"}>
-        <h2 className={"mb-3 text-sm font-semibold text-stone-400"}>All Rarities</h2>
+      {/* Pack */}
+      <section>
+        <h2 className={"mb-4 text-xs font-semibold uppercase tracking-wider text-stone-500"}>Pack</h2>
+        <PackCard pack={DEMO_PACK} onClick={noop} />
+      </section>
 
-        <div className={"grid grid-cols-2 gap-4"}>
-          <GameCard anime={"Jujutsu Kaisen"} className={"w-full"} image={ITADORI_IMAGE} name={"Itadori Yuuji"} rarity={"common"} />
-          <GameCard anime={"Jujutsu Kaisen"} className={"w-full"} image={ITADORI_IMAGE} name={"Itadori Yuuji"} rarity={"rare"} />
-          <GameCard anime={"Fullmetal Alchemist: Brotherhood"} className={"w-full"} image={ITADORI_IMAGE} name={"Edward Elric The Fullmetal Alchemist"} rarity={"epic"} />
-          <GameCard anime={"Jujutsu Kaisen"} className={"w-full"} image={ITADORI_IMAGE} name={"Itadori Yuuji"} rarity={"legendary"} />
-          <GameCard anime={"Jujutsu Kaisen"} backgroundImage={JJK_BACKGROUND} className={"w-full"} image={ITADORI_TRANSPARENT} name={"Itadori Yuuji"} rarity={"prismatic"} />
+      {/* Cards */}
+      <section>
+        <h2 className={"mb-3 text-xs font-semibold uppercase tracking-wider text-stone-500"}>Cards</h2>
+
+        <div className={"flex flex-wrap gap-3"}>
+          {RARITIES.map((r) => (
+            <GameCard
+              anime={DEMO_CARD.anime}
+              backgroundImage={DEMO_CARD.backgroundImage}
+              image={DEMO_CARD.image}
+              key={r}
+              name={DEMO_CARD.name}
+              rarity={r}
+            />
+          ))}
         </div>
-      </div>
+      </section>
     </div>
   )
 }

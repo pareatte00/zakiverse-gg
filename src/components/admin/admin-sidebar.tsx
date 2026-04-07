@@ -116,15 +116,12 @@ export function AdminSidebar() {
                   </GameButton>
                 )
               })}
+
+              {group.label === "Cards" && <DraftToggleButton />}
             </div>
           </div>
         ))}
       </nav>
-
-      {/* Draft toggle */}
-      <div className={"border-t border-border px-3 py-3"}>
-        <DraftToggleButton />
-      </div>
 
       {/* Back to game */}
       <div className={"space-y-3 border-t border-border px-3 py-3"}>

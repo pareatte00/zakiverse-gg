@@ -32,7 +32,6 @@ export function SessionExpiredModal() {
     <div className={"fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm"}>
       <div className={"mx-4 w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center shadow-2xl"}>
         <ShieldAlert className={"mx-auto h-10 w-10 text-amber-400"} />
-
         <h2 className={"mt-4 text-lg font-bold text-zinc-100"}>Session Expired</h2>
 
         <p className={"mt-2 text-sm text-zinc-400"}>
