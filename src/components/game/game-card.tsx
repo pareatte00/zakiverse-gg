@@ -185,11 +185,12 @@ interface GameCardProps {
   className?:       string
   image?:           string
   name:             string
+  noModal?:         boolean
   rarity?:          Rarity
   static?:          boolean
 }
 
-export function GameCard({ name, anime, image, backgroundImage, rarity = "common", className, actions, static: isStatic = false }: GameCardProps) {
+export function GameCard({ name, anime, image, backgroundImage, rarity = "common", className, actions, noModal = false, static: isStatic = false }: GameCardProps) {
   const config = RARITY_CONFIG[rarity]
   const cardRef = useRef<HTMLDivElement>(null)
   const bgRef = useRef<HTMLImageElement>(null)
@@ -329,7 +330,7 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
             "aspect-[2/3] pointer-events-auto",
             expanded
               ? "w-64"
-              : cn("w-full", !isStatic && "cursor-pointer"),
+              : cn("w-full", !isStatic && !noModal && "cursor-pointer"),
           )}
           ref={cardRef}
           style={{
@@ -337,7 +338,7 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
             transformStyle: "preserve-3d",
             animation:      expanded ? "gc-fade-in 0.2s ease" : undefined,
           }}
-          onClick={!isStatic && !expanded ? handleExpand : undefined}
+          onClick={!isStatic && !noModal && !expanded ? handleExpand : undefined}
           onMouseLeave={!isStatic ? resetTilt : undefined}
           onMouseMove={!isStatic ? handleMouseMove : undefined}
           onTouchEnd={!isStatic ? handleTouchEnd : undefined}

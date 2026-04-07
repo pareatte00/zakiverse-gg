@@ -137,6 +137,7 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance }: Ca
   const springX = useSpring(dragX, { stiffness: 300, damping: 25, mass: 0.8 })
   const dragVisualX = useTransform(springX, [ -dragClamp, 0, dragClamp ], [ -cardWidth * 0.3, 0, cardWidth * 0.3 ])
   const dragRotate = useTransform(springX, [ -dragClamp, 0, dragClamp ], [ -DRAG_ROTATION, 0, DRAG_ROTATION ])
+  const nextCardOpacity = useTransform(springX, (v) => Math.min(1, Math.abs(v) / (dragClamp * 0.3)))
 
   // Reset state on card change
   useEffect(() => {
@@ -223,17 +224,18 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance }: Ca
       {/* Card stack area */}
       <div className={"relative"} style={{ width: cardWidth, height: cardHeight }}>
 
-        {/* Next card preview — same size, shows rarity color */}
+        {/* Next card preview — fades in only during swipe */}
         {remaining > 1 && (() => {
           const nextConfig = nextCardRarity
             ? RARITY_REVEAL_CONFIG[nextCardRarity] ?? RARITY_REVEAL_CONFIG.common
             : null
 
           return (
-            <div
+            <motion.div
               className={"absolute inset-0 overflow-hidden border-2 border-stone-700/60"}
               style={{
                 borderRadius: cardRadius,
+                opacity:      nextCardOpacity,
                 background:   nextConfig
                   ? nextConfig.overlayGradient
                   : "linear-gradient(to bottom right, #292524, #1c1917)",
@@ -262,7 +264,7 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance }: Ca
               }}
             >
               <GameCard
-                static
+                noModal
                 anime={card.anime_title}
                 backgroundImage={card.background_image}
                 image={card.image}
@@ -337,15 +339,15 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance }: Ca
 
           </div>
         </motion.div>
+
+        {/* Swipe hint — positioned below card */}
+        <p
+          className={"absolute left-1/2 -translate-x-1/2 select-none text-xs text-stone-600"}
+          style={{ top: cardHeight + 16 }}
+        >
+          {subPhase === "revealed" ? "Swipe or tap to continue" : "\u00A0"}
+        </p>
       </div>
-
-      {/* Swipe hint */}
-
-      <p
-        className={"mt-4 select-none text-xs text-stone-600"}
-      >
-        {subPhase === "revealed" ? "Swipe or tap to continue" : "."}
-      </p>
     </div>
   )
 }

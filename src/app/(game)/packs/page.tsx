@@ -79,10 +79,16 @@ export default function PacksPage() {
     close()
 
     // Go back to the peek 1/10 inspect overlay for the same pack
+    // Delay so the opening overlay exit animation (0.3s) finishes first
     if (lastOpenedPackRef.current) {
-      setReturningFromOpen(true)
-      setInspectPack(lastOpenedPackRef.current)
+      const pack = lastOpenedPackRef.current
+
       lastOpenedPackRef.current = null
+
+      setTimeout(() => {
+        setReturningFromOpen(true)
+        setInspectPack(pack)
+      }, 350)
     }
   }, [ close ])
 
@@ -148,7 +154,7 @@ export default function PacksPage() {
 
       </div>
 
-      {state.phase === "idle" && (
+      {state.phase === "idle" && inspectPack && (
         <PackInspectOverlay
           pack={inspectPack}
           skipEntry={returningFromOpen}

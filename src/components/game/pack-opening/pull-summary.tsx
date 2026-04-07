@@ -109,7 +109,7 @@ export function PullSummary({ cards, onClose }: PullSummaryProps) {
 
       {/* Scrollable 3-column grid */}
       <div className={"min-h-0 w-full flex-1 overflow-y-auto px-4"}>
-        <div className={"mx-auto flex min-h-full max-w-md flex-wrap content-center justify-center gap-3 pb-4"}>
+        <div className={"mx-auto flex min-h-full max-w-md flex-wrap content-center justify-center gap-3 py-8"}>
           {cards.map((card, i) => {
             const cfg = REVEAL_CONFIG[card.rarity] ?? REVEAL_CONFIG.common
             const appearDelay = delays[i]
@@ -126,6 +126,7 @@ export function PullSummary({ cards, onClose }: PullSummaryProps) {
               >
                 {/* The actual card — always rendered underneath */}
                 <GameCard
+                  noModal
                   anime={card.anime_title}
                   backgroundImage={card.background_image}
                   image={card.image}

@@ -11,7 +11,7 @@ import { RARITIES } from "@/lib/const/const.rarity"
 import { cn } from "@/lib/utils"
 import type { MotionValue } from "framer-motion"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
-import { useCallback, useEffect, useReducer, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from "react"
 
 /* ── Constants ── */
 
@@ -24,7 +24,18 @@ const KEYFRAMES = `
   0%   { opacity: 1; }
   100% { opacity: 0; }
 }
+@keyframes sparkle-shimmer {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
 `
+const RARITY_CARD_BG: Record<string, string> = {
+  common:    "linear-gradient(135deg, rgba(168,162,158,0.95) 0%, rgba(214,211,209,0.7) 50%, rgba(168,162,158,0.95) 100%)",
+  rare:      "linear-gradient(135deg, rgba(59,130,246,0.95) 0%, rgba(96,165,250,0.7) 50%, rgba(59,130,246,0.95) 100%)",
+  epic:      "linear-gradient(135deg, rgba(168,85,247,0.95) 0%, rgba(232,121,249,0.7) 50%, rgba(168,85,247,0.95) 100%)",
+  legendary: "linear-gradient(135deg, rgba(245,158,11,0.95) 0%, rgba(251,191,36,0.7) 30%, rgba(239,68,68,0.5) 70%, rgba(245,158,11,0.95) 100%)",
+  prismatic: "conic-gradient(from 0deg, rgba(196,181,253,0.95), rgba(249,168,212,0.95), rgba(165,243,252,0.95), rgba(221,214,254,0.95), rgba(251,207,232,0.95), rgba(153,246,228,0.95), rgba(196,181,253,0.95))",
+}
 const DISMISS_MS = 300
 const PACK_MAX_WIDTH = 288
 const PACK_WIDTH_VW = 72 // vw — responsive cap
@@ -196,9 +207,11 @@ export function PackInspectOverlay({ pack, skipEntry, onOpenWithCards, onClose, 
   const zoomFrozenRef = useRef(false)
   // ── Dismiss animation ──
   const [ isDismissing, setIsDismissing ] = useState(false)
+  // ── Skip backdrop fade-in when returning from summary ──
+  const skipFadeInRef = useRef(!!skipEntry)
 
-  // ── Reset on pack change ──
-  useEffect(() => {
+  // ── Reset on pack change (layout to position before paint) ──
+  useLayoutEffect(() => {
     if (pack) {
       dispatch({ type: "RESET" })
       rawDelta.set(0)
@@ -209,12 +222,14 @@ export function PackInspectOverlay({ pack, skipEntry, onOpenWithCards, onClose, 
       setIsDismissing(false)
 
       if (skipEntry) {
-        // Returning from summary — just center it
+        // Returning from summary — just center it, no fade-in
+        skipFadeInRef.current = true
         rawY.set(0)
         springY.jump(0)
         onEntryDone?.()
       }
       else {
+        skipFadeInRef.current = false
         // Fresh open — animate from bottom
         const entryOffset = typeof window !== "undefined" ? window.innerHeight * 0.6 : 500
 
@@ -359,11 +374,15 @@ export function PackInspectOverlay({ pack, skipEntry, onOpenWithCards, onClose, 
 
       {/* Dark backdrop */}
       <div
-        className={"fixed inset-0 z-[70] bg-black/80"}
+        className={"fixed inset-0 z-[70]"}
         style={{
-          animation: isDismissing
+          backgroundColor: isZoomed ? "rgba(0,0,0,0.95)" : "rgba(0,0,0,0.8)",
+          transition:      "background-color 0.3s ease",
+          animation:       isDismissing
             ? `pi-fade-out ${DISMISS_MS}ms ease forwards`
-            : "pi-fade-in 0.2s ease",
+            : skipFadeInRef.current
+              ? "none"
+              : "pi-fade-in 0.2s ease",
         }}
         onClick={showControls && !isDismissing ? handleDismiss : undefined}
       />
@@ -371,13 +390,36 @@ export function PackInspectOverlay({ pack, skipEntry, onOpenWithCards, onClose, 
       {/* Lock zones */}
       {(state.phase === "inspect" || isDismissing) && (
         <>
-          <LockZone dismissing={isDismissing} dragY={rawDelta} label={"1"} position={"top"} threshold={threshold} />
-          <LockZone dismissing={isDismissing} dragY={rawDelta} label={`${pack.cards_per_pull}`} position={"bottom"} threshold={threshold} />
+          <LockZone dismissing={isDismissing} dragY={rawDelta} label={"1"} position={"top"} skipFadeIn={skipFadeInRef.current} threshold={threshold} />
+          <LockZone dismissing={isDismissing} dragY={rawDelta} label={`${pack.cards_per_pull}`} position={"bottom"} skipFadeIn={skipFadeInRef.current} threshold={threshold} />
         </>
       )}
 
       {/* Main content */}
       <div className={"pointer-events-none fixed inset-0 z-[80] overflow-hidden"}>
+
+        {/* Card preview behind pack — revealed as pack slides away */}
+        {(state.phase === "tearing" || state.phase === "sliding") && state.cards?.[0] && (() => {
+          const previewW = Math.min(260, vw * 0.62)
+          const previewH = previewW * 1.5
+          const previewR = Math.round(previewW * 0.08)
+          const bg = RARITY_CARD_BG[state.cards[0].rarity] ?? RARITY_CARD_BG.common
+
+          return (
+            <div className={"absolute inset-0 z-0 flex items-center justify-center"}>
+              <div
+                style={{
+                  width:          previewW,
+                  height:         previewH,
+                  borderRadius:   previewR,
+                  background:     bg,
+                  backgroundSize: "200% 200%",
+                  animation:      "sparkle-shimmer 2s linear infinite",
+                }}
+              />
+            </div>
+          )
+        })()}
 
         {/* Pack wrapper — absolutely centered, spring drag + zoom */}
         <motion.div
@@ -455,9 +497,10 @@ interface LockZoneProps {
   threshold:   number
   label:       string
   dismissing?: boolean
+  skipFadeIn?: boolean
 }
 
-function LockZone({ position, dragY, threshold, label, dismissing }: LockZoneProps) {
+function LockZone({ position, dragY, threshold, label, dismissing, skipFadeIn }: LockZoneProps) {
   const isTop = position === "top"
   const opacity = useTransform(
     dragY,
@@ -504,10 +547,12 @@ function LockZone({ position, dragY, threshold, label, dismissing }: LockZonePro
         )}
         style={{
           height:    "16vh",
-          opacity:   0,
+          opacity:   skipFadeIn ? 1 : 0,
           animation: dismissing
             ? `pi-fade-out ${DISMISS_MS}ms ease forwards`
-            : "pi-fade-in 0.3s ease 0.25s forwards",
+            : skipFadeIn
+              ? "none"
+              : "pi-fade-in 0.3s ease 0.25s forwards",
         }}
       >
         {isTop && (
