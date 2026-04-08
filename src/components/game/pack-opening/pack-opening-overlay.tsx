@@ -8,12 +8,13 @@ import { PullSummary } from "./pull-summary"
 import type { PackOpeningState } from "./use-pack-opening"
 
 interface PackOpeningOverlayProps {
-  state:       PackOpeningState
-  onTapReveal: () => void
-  onClose:     () => void
+  state:         PackOpeningState
+  onTapReveal:   () => void
+  onSkipAll?:    () => void
+  onClose:       () => void
 }
 
-export function PackOpeningOverlay({ state, onTapReveal, onClose }: PackOpeningOverlayProps) {
+export function PackOpeningOverlay({ state, onTapReveal, onSkipAll, onClose }: PackOpeningOverlayProps) {
   const exitDirRef = useRef<"left" | "right">("right")
 
   const handleAdvance = useCallback((dir?: "left" | "right") => {
@@ -71,6 +72,7 @@ export function PackOpeningOverlay({ state, onTapReveal, onClose }: PackOpeningO
                   nextCardRarity={state.pulledCards[state.currentRevealIdx + 1]?.rarity}
                   total={state.pulledCards.length}
                   onAdvance={handleAdvance}
+                  onSkipAll={onSkipAll}
                 />
               </motion.div>
             )}

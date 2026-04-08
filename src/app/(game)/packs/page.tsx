@@ -31,7 +31,7 @@ export default function PacksPage() {
   const [ packs, setPacks ] = useState<PackPayload[]>([])
   const [ loading, setLoading ] = useState(true)
   const initialized = useRef(false)
-  const { state, startRevealing, tapReveal, close } = usePackOpening()
+  const { state, startRevealing, tapReveal, skipToSummary, close } = usePackOpening()
   const [ inspectPack, setInspectPack ] = useState<PackPayload | null>(null)
   const [ infoPack, setInfoPack ] = useState<PackPayload | null>(null)
   const [ infoLoading, setInfoLoading ] = useState(false)
@@ -167,6 +167,7 @@ export default function PacksPage() {
       <PackOpeningOverlay
         state={state}
         onClose={handleClose}
+        onSkipAll={skipToSummary}
         onTapReveal={tapReveal}
       />
 

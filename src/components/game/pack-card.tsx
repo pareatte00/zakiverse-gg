@@ -119,11 +119,11 @@ function BrandMonogram() {
       }}
     >
       <span
-        className={"font-black leading-none text-white"}
+        className={"leading-none text-white"}
         style={{
+          fontFamily:    "var(--font-nabla)",
           fontSize:      "5.4cqw",
           letterSpacing: "-0.4cqw",
-          textShadow:    "0 0 2.1cqw rgba(196,181,253,0.5)",
         }}
       >
         ZS
@@ -474,7 +474,7 @@ export function PackCard({ highestRarity, isTearing = false, onClick, onInfo, on
 
   useEffect(() => {
     if (!tiltEnabled) resetTilt()
-  }, [ tiltEnabled ]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ tiltEnabled ])
 
   useEffect(() => {
     const card = cardRef.current
@@ -529,11 +529,11 @@ export function PackCard({ highestRarity, isTearing = false, onClick, onInfo, on
 
             {/* Top-left: Pack ID */}
             <div
-              className={"absolute z-10 rounded font-bold uppercase tracking-wider"}
+              className={"absolute z-10 rounded-full font-bold uppercase tracking-wider"}
               style={{
                 top:            "3cqw",
                 left:           "3cqw",
-                padding:        "0.8cqw 2.3cqw",
+                padding:        "0.8cqw 5cqw",
                 fontSize:       "4.5cqw",
                 background:     "linear-gradient(135deg, rgba(0,0,0,0.7), rgba(20,10,30,0.7))",
                 backdropFilter: "blur(1.4cqw)",
@@ -543,13 +543,7 @@ export function PackCard({ highestRarity, isTearing = false, onClick, onInfo, on
             >
               <span
                 style={{
-                  background:           "linear-gradient(90deg, #c4b5fd, #f9a8d4, #a5f3fc, #ddd6fe, #c4b5fd)",
-                  backgroundSize:       "200% 100%",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor:  "transparent",
-                  animation:            "pc-iridescent 4s linear infinite",
-                  display:              "inline-block",
-                  transformOrigin:      "center",
+                  filter: "brightness(10) saturate(0)",
                 }}
               >
                 {pack.code}
@@ -610,31 +604,25 @@ export function PackCard({ highestRarity, isTearing = false, onClick, onInfo, on
             {/* Bottom row: card count (left) + brand (right) */}
             <div
               className={"absolute inset-x-0 z-10 flex items-end justify-between"}
-              style={{ bottom: "10cqw", padding: "0 4.6cqw" }}
+              style={{ bottom: "11cqw", padding: "0 4.6cqw" }}
             >
               {/* Total cards (left) + card count (right) */}
               <div className={"flex items-baseline"} style={{ gap: "3cqw" }}>
                 <span
-                  className={"font-black leading-none"}
+                  className={"leading-none"}
                   style={{
-                    fontSize:         "9.2cqw",
-                    color:            "#000",
-                    WebkitTextStroke: "1cqw #fff",
-                    textShadow:       "0 0.35cqw 1.4cqw rgba(0,0,0,0.6)",
-                    paintOrder:       "stroke fill",
+                    fontFamily: "var(--font-nabla)",
+                    fontSize:   "10.2cqw",
                   }}
                 >
                   {`${pack.total_cards}T`}
                 </span>
 
                 <span
-                  className={"font-black leading-none"}
+                  className={"leading-none"}
                   style={{
-                    fontSize:         "9.2cqw",
-                    color:            "#000",
-                    WebkitTextStroke: "1cqw #fff",
-                    textShadow:       "0 0.35cqw 1.4cqw rgba(0,0,0,0.6)",
-                    paintOrder:       "stroke fill",
+                    fontFamily: "var(--font-nabla)",
+                    fontSize:   "10.2cqw",
                   }}
                 >
                   {`${pack.cards_per_pull}C`}

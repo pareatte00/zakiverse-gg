@@ -120,9 +120,10 @@ interface CardRevealProps {
   total:           number
   nextCardRarity?: string
   onAdvance:       (dir?: "left" | "right") => void
+  onSkipAll?:      () => void
 }
 
-export function CardReveal({ card, index, total, nextCardRarity, onAdvance }: CardRevealProps) {
+export function CardReveal({ card, index, total, nextCardRarity, onAdvance, onSkipAll }: CardRevealProps) {
   const cardWidth = Math.min(260, typeof window !== "undefined" ? window.innerWidth * 0.62 : 260)
   const cardHeight = cardWidth * 1.5
   const cardRadius = Math.round(cardWidth * 0.08) // match game-card rounded-[8cqw]
@@ -192,27 +193,41 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance }: Ca
   }
 
   const canSwipe = subPhase === "revealed"
+  const rawOffsetYRef = useRef(0)
   const handlePan = useCallback((_: unknown, info: PanInfo) => {
     if (!canSwipe) return
 
     wasPanningRef.current = true
     rawOffsetRef.current = info.offset.x
+    rawOffsetYRef.current = info.offset.y
     dragX.set(Math.max(-dragClamp, Math.min(dragClamp, info.offset.x)))
   }, [ canSwipe, dragClamp, dragX ])
   const handlePanEnd = useCallback(() => {
     if (!canSwipe) return
-    const raw = rawOffsetRef.current
+    const rawX = rawOffsetRef.current
+    const rawY = rawOffsetYRef.current
 
-    if (Math.abs(raw) >= SWIPE_THRESHOLD_PX) {
-      dismiss(raw < 0 ? "left" : "right")
+    // Swipe up → skip to summary
+    if (rawY < -SWIPE_THRESHOLD_PX && Math.abs(rawY) > Math.abs(rawX) && onSkipAll) {
       rawOffsetRef.current = 0
+      rawOffsetYRef.current = 0
+      onSkipAll()
+
+      return
+    }
+
+    if (Math.abs(rawX) >= SWIPE_THRESHOLD_PX) {
+      dismiss(rawX < 0 ? "left" : "right")
+      rawOffsetRef.current = 0
+      rawOffsetYRef.current = 0
 
       return
     }
 
     rawOffsetRef.current = 0
+    rawOffsetYRef.current = 0
     dragX.set(0)
-  }, [ canSwipe, dragX, dismiss ])
+  }, [ canSwipe, dragX, dismiss, onSkipAll ])
 
   return (
     <div

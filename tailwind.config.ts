@@ -17,8 +17,9 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: [ "var(--font-inter-sans)", "system-ui", "sans-serif" ],
-        mono: [ "var(--font-jetbrains-mono)", "monospace" ],
+        sans:  [ "var(--font-inter-sans)", "system-ui", "sans-serif" ],
+        mono:  [ "var(--font-jetbrains-mono)", "monospace" ],
+        nabla: [ "var(--font-nabla)" ],
       },
       colors: {
         border:     "hsl(var(--border))",

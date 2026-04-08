@@ -49,6 +49,7 @@ type Action =
   | { type: "BREAK_DONE" }
   | { type: "TAP_REVEAL" }
   | { type: "START_REVEALING", packId: string, packName: string, packImage: string, cards: EnrichedPulledCard[] }
+  | { type: "SKIP_TO_SUMMARY" }
   | { type: "CLOSE" }
 
 const INITIAL_STATE: PackOpeningState = {
@@ -113,6 +114,11 @@ function reducer(state: PackOpeningState, action: Action): PackOpeningState {
         pulledCards:      action.cards,
         currentRevealIdx: 0,
       }
+
+    case "SKIP_TO_SUMMARY":
+      if (state.phase !== "revealing") return state
+
+      return { ...state, phase: "summary" }
 
     case "CLOSE":
       return { ...INITIAL_STATE }
@@ -224,7 +230,8 @@ export function usePackOpening() {
   }, [])
   const tapPack = useCallback(() => dispatch({ type: "TAP_PACK" }), [])
   const tapReveal = useCallback(() => dispatch({ type: "TAP_REVEAL" }), [])
+  const skipToSummary = useCallback(() => dispatch({ type: "SKIP_TO_SUMMARY" }), [])
   const close = useCallback(() => dispatch({ type: "CLOSE" }), [])
 
-  return { state, openPack, startRevealing, tapPack, tapReveal, close }
+  return { state, openPack, startRevealing, tapPack, tapReveal, skipToSummary, close }
 }

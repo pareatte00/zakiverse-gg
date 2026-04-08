@@ -2,17 +2,21 @@ import { ThemeProvider } from "@/components/provider/ThemeProvider"
 import type { Metadata } from "next"
 import { NextIntlClientProvider } from "next-intl"
 import { getLocale } from "next-intl/server"
-import { Outfit } from "next/font/google"
+import { Nabla, Outfit } from "next/font/google"
 import "./globals.css"
 
 const outfit = Outfit({
   variable: "--font-outfit",
   subsets:  [ "latin" ],
 })
+const nabla = Nabla({
+  variable: "--font-nabla",
+  subsets:  [ "latin" ],
+})
 
 export const metadata: Metadata = {
-  title:       "Marketing Performance Dashboard",
-  description: "Comprehensive dashboard for SEO, Ads, Conversion and HR KPIs",
+  title:       "Zakiverse",
+  description: "Collect, trade, and open packs of anime cards",
 }
 
 export default async function RootLayout({
@@ -25,7 +29,7 @@ export default async function RootLayout({
   return (
     <html suppressHydrationWarning lang={locale}>
       <body
-        className={`${outfit.variable} antialiased`}
+        className={`${outfit.variable} ${nabla.variable} antialiased`}
       >
         <NextIntlClientProvider locale={locale}>
           <ThemeProvider
