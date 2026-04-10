@@ -78,6 +78,8 @@ export default function BuilderPage() {
         display_name:        character?.name ?? item.name,
         rarity_id:           "common",
         selected_anime:      selectedAnime,
+        tag_id:              "",
+        tag_name:            "",
         config:              {},
         status:              "idle",
         error_message:       "",
@@ -192,10 +194,10 @@ export default function BuilderPage() {
     for (const card of builderData) {
       if (card.status === "success") continue
 
-      if (!card.rarity_id || !card.selected_anime) {
+      if (!card.rarity_id || !card.selected_anime || !card.tag_id) {
         updateBuilderCard(card.draft_item.mal_id, {
           status:        "error",
-          error_message: !card.rarity_id ? "Rarity required" : "Anime required",
+          error_message: !card.rarity_id ? "Rarity required" : !card.tag_id ? "Tag required" : "Anime required",
         })
 
         continue
@@ -212,6 +214,7 @@ export default function BuilderPage() {
           anime_mal_id:      card.selected_anime.mal_id,
           anime_title:       card.selected_anime.title,
           anime_cover_image: card.draft_item.image_url,
+          tag_id:            card.tag_id,
           config:            {
             ...card.config,
             ...(card.rarity_id === "prismatic" && card.selected_background

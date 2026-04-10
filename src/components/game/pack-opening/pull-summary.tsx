@@ -1,9 +1,9 @@
 "use client"
 
 import { GameCard } from "@/components/game/game-card"
-import { RARITY_COLORS } from "@/lib/const/const.rarity"
+import { useGameSound } from "@/lib/hook/use-game-sound"
 import { motion } from "framer-motion"
-import { PullConfetti } from "./pull-confetti"
+import { useEffect } from "react"
 import type { EnrichedPulledCard } from "./use-pack-opening"
 
 const SUMMARY_KEYFRAMES = `
@@ -98,14 +98,25 @@ interface PullSummaryProps {
 }
 
 export function PullSummary({ cards, onClose }: PullSummaryProps) {
+  const { play } = useGameSound()
   const newCount = cards.filter((c) => c.is_new).length
   const delays = computeDelays(cards)
   const lastDelay = delays[delays.length - 1] ?? 0
 
+  // Fanfare on mount
+  useEffect(() => {
+    play("summary-fanfare")
+  }, [ play ])
+
   return (
-    <div className={"flex h-full flex-col items-center"} onClick={onClose}>
+    <div
+      className={"flex h-full flex-col items-center"}
+      onClick={() => {
+        play("summary-dismiss")
+        onClose()
+      }}
+    >
       <style>{SUMMARY_KEYFRAMES}</style>
-      <PullConfetti />
 
       {/* Scrollable 3-column grid */}
       <div className={"min-h-0 w-full flex-1 overflow-y-auto px-4"}>
@@ -122,6 +133,11 @@ export function PullSummary({ cards, onClose }: PullSummaryProps) {
                 className={"relative w-[30%] rounded-xl"}
                 initial={{ opacity: 0, scale: 0.92 }}
                 key={`${i}-${card.card_id}`}
+                style={{
+                  animation:         cfg.glowAnim ?? undefined,
+                  animationDelay:    cfg.glowAnim ? `${dissolveDelay}s` : undefined,
+                  animationFillMode: cfg.glowAnim ? "both" : undefined,
+                }}
                 transition={{ delay: appearDelay, duration: 0.15, ease: "easeOut" }}
               >
                 {/* The actual card — always rendered underneath */}
@@ -152,27 +168,6 @@ export function PullSummary({ cards, onClose }: PullSummaryProps) {
                   >
                     NEW
                   </div>
-                )}
-
-                {/* Rarity glow */}
-                <div
-                  className={"pointer-events-none absolute -inset-1 -z-10 rounded-xl opacity-30 blur-md"}
-                  style={{
-                    boxShadow: `0 0 16px ${RARITY_COLORS[card.rarity as keyof typeof RARITY_COLORS]?.shadow ?? "transparent"}`,
-                  }}
-                />
-
-                {/* Glow flash for epic+ */}
-                {cfg.glowAnim && (
-                  <div
-                    className={"pointer-events-none absolute -inset-0.5 -z-10"}
-                    style={{
-                      borderRadius:      cfg.glowRadius,
-                      animation:         cfg.glowAnim,
-                      animationDelay:    `${dissolveDelay}s`,
-                      animationFillMode: "both",
-                    }}
-                  />
                 )}
               </motion.div>
             )

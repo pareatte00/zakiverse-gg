@@ -1,27 +1,58 @@
 "use client"
 
+import { useGameSound } from "@/lib/hook/use-game-sound"
 import { AnimatePresence, motion } from "framer-motion"
-import { Loader2 } from "lucide-react"
-import { useCallback, useRef } from "react"
+import { Loader2, Volume2, VolumeX } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { CardReveal } from "./card-reveal"
 import { PullSummary } from "./pull-summary"
 import type { PackOpeningState } from "./use-pack-opening"
 
+const SKIP_FAN_DELAY_MS = 120
+
 interface PackOpeningOverlayProps {
-  state:         PackOpeningState
-  onTapReveal:   () => void
-  onSkipAll?:    () => void
-  onClose:       () => void
+  state:       PackOpeningState
+  onTapReveal: () => void
+  onClose:     () => void
 }
 
-export function PackOpeningOverlay({ state, onTapReveal, onSkipAll, onClose }: PackOpeningOverlayProps) {
-  const exitDirRef = useRef<"left" | "right">("right")
-
+export function PackOpeningOverlay({ state, onTapReveal, onClose }: PackOpeningOverlayProps) {
+  const { play, muted, toggleMute } = useGameSound()
+  const exitDirRef = useRef<"left" | "right" | "up">("right")
+  const [ skipping, setSkipping ] = useState(false)
   const handleAdvance = useCallback((dir?: "left" | "right") => {
     exitDirRef.current = dir ?? "right"
     onTapReveal()
   }, [ onTapReveal ])
+  // Local skip handler — starts fan-out instead of jumping to summary
+  const handleSkipAll = useCallback(() => {
+    exitDirRef.current = "up"
+    setSkipping(true)
+    onTapReveal()
+  }, [ onTapReveal ])
+
+  // Auto-advance remaining cards during skip fan-out
+  useEffect(() => {
+    if (!skipping) return
+
+    // Once we leave revealing phase (last TAP_REVEAL transitions to summary), stop
+    if (state.phase !== "revealing") {
+      setSkipping(false)
+
+      return
+    }
+
+    const timer = setTimeout(() => {
+      exitDirRef.current = "up"
+      play("card-skip")
+      onTapReveal()
+    }, SKIP_FAN_DELAY_MS)
+
+    return () => clearTimeout(timer)
+  }, [ skipping, state.currentRevealIdx, state.phase, onTapReveal, play ])
+
   const isOpen = state.phase !== "idle"
+  const isUp = exitDirRef.current === "up"
 
   return (
     <AnimatePresence>
@@ -33,6 +64,20 @@ export function PackOpeningOverlay({ state, onTapReveal, onSkipAll, onClose }: P
           initial={{ opacity: state.phase === "revealing" ? 1 : 0 }}
           transition={{ duration: 0.3 }}
         >
+          {/* Mute toggle */}
+          <button
+            className={"absolute right-4 top-4 z-10 rounded-full bg-stone-800/60 p-2 text-stone-400 transition-colors hover:bg-stone-700/80 hover:text-stone-200"}
+            type={"button"}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleMute()
+            }}
+          >
+            {muted
+              ? <VolumeX className={"h-4 w-4"} />
+              : <Volume2 className={"h-4 w-4"} />}
+          </button>
+
           {/* Loading state */}
           {state.phase === "loading" && (
             <div className={"flex h-full flex-col items-center justify-center gap-3"}>
@@ -60,11 +105,16 @@ export function PackOpeningOverlay({ state, onTapReveal, onSkipAll, onClose }: P
           <AnimatePresence mode={"popLayout"}>
             {state.phase === "revealing" && state.pulledCards[state.currentRevealIdx] && (
               <motion.div
-                animate={{ x: 0, opacity: 1 }}
+                animate={{ x: 0, y: 0, opacity: 1, scale: 1 }}
                 className={"absolute inset-0"}
-                exit={{ x: exitDirRef.current === "left" ? -80 : 80, opacity: 0 }}
+                exit={{
+                  x:       isUp ? 0 : exitDirRef.current === "left" ? -80 : 80,
+                  y:       isUp ? -300 : 0,
+                  scale:   isUp ? 0.8 : 1,
+                  opacity: 0,
+                }}
                 key={`${state.currentRevealIdx}-${state.pulledCards[state.currentRevealIdx].card_id}`}
-                transition={{ duration: 0.12, ease: "easeOut" }}
+                transition={{ duration: skipping ? 0.2 : 0.12, ease: "easeOut" }}
               >
                 <CardReveal
                   card={state.pulledCards[state.currentRevealIdx]}
@@ -72,7 +122,7 @@ export function PackOpeningOverlay({ state, onTapReveal, onSkipAll, onClose }: P
                   nextCardRarity={state.pulledCards[state.currentRevealIdx + 1]?.rarity}
                   total={state.pulledCards.length}
                   onAdvance={handleAdvance}
-                  onSkipAll={onSkipAll}
+                  onSkipAll={handleSkipAll}
                 />
               </motion.div>
             )}

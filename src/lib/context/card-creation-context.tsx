@@ -33,6 +33,8 @@ export interface BuilderCardData {
   display_name:        string
   rarity_id:           string
   selected_anime:      BuilderAnimeOption | null
+  tag_id:              string
+  tag_name:            string
   config:              Record<string, any>
   status:              "idle" | "creating" | "success" | "error"
   error_message:       string

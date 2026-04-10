@@ -5,37 +5,115 @@ import { Env } from "@/lib/const/const.env"
 import { findCookie } from "@/lib/hook/cookie"
 import { api, HttpResponse } from "./api"
 
+export type BannerType = "standard" | "featured" | "event" | "beginner" | "seasonal"
+
+export type RotationType = "none" | "weekly" | "monthly"
+
+export type RotationOrderMode = "auto" | "manual"
+
+export interface PackPoolPackItem {
+  id:             string
+  code:           string
+  name:           string
+  description:    string | null
+  image:          string
+  name_image:     string | null
+  cards_per_pull: number
+  sort_order:     number
+}
+
 export interface PackPoolPayload {
-  id:              string
-  name:            string
-  description:     string | null
-  active_count:    number
-  rotation_day:    number
-  last_rotated_at: string | null
-  created_at:      string
-  updated_at:      string
+  id:                  string
+  name:                string
+  description:         string | null
+  image:               string | null
+  banner_type:         BannerType
+  sort_order:          number
+  is_active:           boolean
+  open_at:             string | null
+  close_at:            string | null
+  active_count:        number
+  rotation_type:       RotationType
+  rotation_day:        number | null
+  rotation_interval:   number
+  rotation_hour:       number
+  rotation_order_mode: RotationOrderMode
+  next_rotation_at:    string | null
+  last_rotated_at:     string | null
+  preview_days:        number
+  is_preview:          boolean
+  packs?:              PackPoolPackItem[]
+  created_at:          string
+  updated_at:          string
 }
 
 export interface CreatePackPoolRequest {
-  name:         string
-  description?: string
-  active_count: number
-  rotation_day: number
+  name:                string
+  description?:        string
+  image?:              string
+  banner_type:         BannerType
+  sort_order?:         number
+  is_active:           boolean
+  open_at?:            string
+  close_at?:           string
+  active_count:        number
+  rotation_type:       RotationType
+  rotation_day?:       number
+  rotation_interval?:  number
+  rotation_hour?:      number
+  rotation_order_mode: RotationOrderMode
+  preview_days?:       number
 }
 
 export interface UpdatePackPoolRequest {
-  name?:         string
-  description?:  string
-  active_count?: number
-  rotation_day?: number
+  name?:                string
+  description?:         string
+  image?:               string
+  banner_type?:         BannerType
+  sort_order?:          number
+  is_active?:           boolean
+  open_at?:             string
+  close_at?:            string
+  active_count?:        number
+  rotation_type?:       RotationType
+  rotation_day?:        number
+  rotation_interval?:   number
+  rotation_hour?:       number
+  rotation_order_mode?: RotationOrderMode
+  preview_days?:        number
 }
 
-export interface PaginationQuery {
-  page:  number
-  limit: number
+export interface PackPoolFindAllQuery {
+  banner_type?: BannerType
+  active_only?: boolean
+  page:         number
+  limit:        number
 }
 
-export async function packPoolFindAll(query: PaginationQuery) {
+// User-facing: get active banners with their current packs
+export async function packPoolFindActiveBanners() {
+  const token = await findCookie(Cookie.accessToken)
+
+  return await api.get<HttpResponse<PackPoolPayload[]>>({
+    url:         "/v1/pack-pool/active",
+    bearerToken: token,
+    serviceKey:  Env.systemServiceKey,
+  })
+}
+
+// User-facing: get a single pool with its current packs
+export async function packPoolFindOneWithPacks(id: string) {
+  const token = await findCookie(Cookie.accessToken)
+
+  return await api.get<HttpResponse<PackPoolPayload>>({
+    url:         `/v1/pack-pool/${id}`,
+    bearerToken: token,
+    serviceKey:  Env.systemServiceKey,
+  })
+}
+
+// Admin: list all pools with filters
+export async function packPoolFindAll(query: PackPoolFindAllQuery) {
   const token = await findCookie(Cookie.accessToken)
 
   return await api.get<HttpResponse<PackPoolPayload[]>>({
@@ -46,11 +124,12 @@ export async function packPoolFindAll(query: PaginationQuery) {
   })
 }
 
+// Admin: get pool detail without packs
 export async function packPoolFindOneById(id: string) {
   const token = await findCookie(Cookie.accessToken)
 
   return await api.get<HttpResponse<PackPoolPayload>>({
-    url:         `/v1/pack-pool/${id}`,
+    url:         `/v1/pack-pool/${id}/detail`,
     bearerToken: token,
     serviceKey:  Env.systemServiceKey,
   })

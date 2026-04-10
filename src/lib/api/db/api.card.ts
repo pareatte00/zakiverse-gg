@@ -12,13 +12,16 @@ export interface CardConfig {
 }
 
 export interface CardPayload {
-  id:     string
-  mal_id: number
-  rarity: Rarity
-  name:   string
-  image:  string
-  config: CardConfig
-  anime:  AnimePayload
+  id:       string
+  mal_id:   number
+  rarity:   Rarity
+  name:     string
+  image:    string
+  config:   CardConfig
+  tag_id:   string | null
+  tag_name: string | null
+  favorite: number
+  anime:    AnimePayload
 }
 
 export interface CreateCardRequest {
@@ -27,6 +30,8 @@ export interface CreateCardRequest {
   name:               string
   image:              string
   config:             CardConfig
+  tag_id:             string
+  favorite?:          number
   anime_mal_id:       number
   anime_title:        string
   anime_synopsis?:    string
@@ -34,10 +39,12 @@ export interface CreateCardRequest {
 }
 
 export interface UpdateCardRequest {
-  rarity?: Rarity
-  name?:   string
-  image?:  string
-  config?: CardConfig
+  rarity?:   Rarity
+  name?:     string
+  image?:    string
+  config?:   CardConfig
+  tag_id?:   string
+  favorite?: number
 }
 
 export interface PaginationQuery {
@@ -52,6 +59,7 @@ export type CardSortOrder = "asc" | "desc"
 export interface CardFindAllQuery extends PaginationQuery {
   search?: string
   rarity?: Rarity
+  tag_id?: string
   sort?:   CardSortField
   order?:  CardSortOrder
 }

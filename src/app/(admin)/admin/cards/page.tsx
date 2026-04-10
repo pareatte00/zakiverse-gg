@@ -13,12 +13,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import type { CardFindAllQuery, CardPayload, CardSortField, CardSortOrder } from "@/lib/api/db/api.card"
 import { cardDeleteOneById, cardFindAll } from "@/lib/api/db/api.card"
+import type { CardTagPayload } from "@/lib/api/db/api.card-tag"
+import { cardTagFindAll } from "@/lib/api/db/api.card-tag"
 import { RARITIES, RARITY_COLORS } from "@/lib/const/const.rarity"
 import { Admin } from "@/lib/const/const.url"
 import { cn } from "@/lib/utils"
-import { ArrowDownAZ, ArrowUpZA, ChevronLeft, ChevronRight, Layers, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react"
+import { ArrowDownAZ, ArrowUpZA, Check, ChevronLeft, ChevronRight, ChevronsUpDown, Layers, Loader2, Pencil, Plus, Search, Tag, Trash2, X } from "lucide-react"
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -34,6 +38,9 @@ export default function CardsListPage() {
   const [ deleting, setDeleting ] = useState(false)
   const [ search, setSearch ] = useState("")
   const [ filterRarity, setFilterRarity ] = useState<Rarity | "">("")
+  const [ filterTag, setFilterTag ] = useState("")
+  const [ tags, setTags ] = useState<CardTagPayload[]>([])
+  const [ tagOpen, setTagOpen ] = useState(false)
   const [ sortField, setSortField ] = useState<CardSortField>("name")
   const [ sortOrder, setSortOrder ] = useState<CardSortOrder>("asc")
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
@@ -53,6 +60,13 @@ export default function CardsListPage() {
       if (searchTimeout.current) clearTimeout(searchTimeout.current)
     }
   }, [ search ])
+
+  // Fetch tags for filter
+  useEffect(() => {
+    void cardTagFindAll({ page: 1, limit: 100 }).then(({ response }) => {
+      setTags(response?.payload ?? [])
+    })
+  }, [])
 
   const fetchCards = useCallback(async (query: CardFindAllQuery) => {
     setLoading(true)
@@ -75,9 +89,10 @@ export default function CardsListPage() {
 
     if (debouncedSearch) query.search = debouncedSearch
     if (filterRarity) query.rarity = filterRarity
+    if (filterTag) query.tag_id = filterTag
 
     void fetchCards(query)
-  }, [ page, debouncedSearch, filterRarity, sortField, sortOrder, fetchCards ])
+  }, [ page, debouncedSearch, filterRarity, filterTag, sortField, sortOrder, fetchCards ])
 
   function handlePageChange(p: number) {
     setPage(p)
@@ -118,6 +133,7 @@ export default function CardsListPage() {
 
       if (debouncedSearch) query.search = debouncedSearch
       if (filterRarity) query.rarity = filterRarity
+      if (filterTag) query.tag_id = filterTag
 
       void fetchCards(query)
     }
@@ -166,6 +182,80 @@ export default function CardsListPage() {
             </button>
           )}
         </div>
+
+        {/* Tag filter */}
+        {tags.length > 0 && (
+          <Popover open={tagOpen} onOpenChange={setTagOpen}>
+            <PopoverTrigger asChild>
+              <button
+                className={cn(
+                  "flex w-full max-w-sm items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
+                  filterTag
+                    ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300"
+                    : "border-zinc-700/60 bg-zinc-800/40 text-zinc-500",
+                )}
+                type={"button"}
+              >
+                <Tag className={"h-4 w-4 shrink-0"} />
+                {tags.find((t) => t.id === filterTag)?.name ?? "All Tags"}
+                <ChevronsUpDown className={"ml-auto h-3.5 w-3.5 text-zinc-500"} />
+
+                {filterTag && (
+                  <button
+                    className={"text-zinc-400 transition-colors hover:text-zinc-200"}
+                    type={"button"}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setFilterTag("")
+                      setPage(1)
+                    }}
+                  >
+                    <X className={"h-3.5 w-3.5"} />
+                  </button>
+                )}
+              </button>
+            </PopoverTrigger>
+
+            <PopoverContent align={"start"} className={"p-0"} style={{ width: "var(--radix-popover-trigger-width)" }}>
+              <Command>
+                <CommandInput placeholder={"Search tags..."} />
+
+                <CommandList>
+                  <CommandEmpty>No tags found.</CommandEmpty>
+
+                  <CommandGroup>
+                    <CommandItem
+                      value={"__all__"}
+                      onSelect={() => {
+                        setFilterTag("")
+                        setPage(1)
+                        setTagOpen(false)
+                      }}
+                    >
+                      <Check className={cn("mr-2 h-3.5 w-3.5", !filterTag ? "opacity-100" : "opacity-0")} />
+                      All Tags
+                    </CommandItem>
+
+                    {tags.map((tag) => (
+                      <CommandItem
+                        key={tag.id}
+                        value={tag.name}
+                        onSelect={() => {
+                          setFilterTag(filterTag === tag.id ? "" : tag.id)
+                          setPage(1)
+                          setTagOpen(false)
+                        }}
+                      >
+                        <Check className={cn("mr-2 h-3.5 w-3.5", filterTag === tag.id ? "opacity-100" : "opacity-0")} />
+                        {tag.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        )}
 
         {/* Rarity filter pills + Sort controls */}
         <div className={"flex items-center gap-4"}>
@@ -261,16 +351,17 @@ export default function CardsListPage() {
                 <Layers className={"h-10 w-10 text-zinc-700"} />
 
                 <p className={"text-sm text-zinc-500"}>
-                  {debouncedSearch || filterRarity ? "No cards match your filters." : "No cards found."}
+                  {debouncedSearch || filterRarity || filterTag ? "No cards match your filters." : "No cards found."}
                 </p>
 
-                {(debouncedSearch || filterRarity)
+                {(debouncedSearch || filterRarity || filterTag)
                   ? (
                     <GameButton
                       variant={"ghost"}
                       onClick={() => {
                         setSearch("")
                         setFilterRarity("")
+                        setFilterTag("")
                       }}
                     >
                       <X className={"h-4 w-4"} />
@@ -292,37 +383,40 @@ export default function CardsListPage() {
             : (
               <div className={"grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4"}>
                 {cards.map((card) => (
-                  <GameCard
-                    static
-                    actions={(
-                      <>
-                        <GameButton
-                          asChild
-                          className={"!p-[5cqw] drop-shadow-lg mb-1"}
-                          variant={"ghost"}
-                        >
-                          <Link href={Admin.Cards.Edit(card.id)}>
-                            <Pencil style={{ width: "8cqw", height: "8cqw" }} />
-                          </Link>
-                        </GameButton>
+                  <div key={card.id}>
+                    <GameCard
+                      static
+                      actions={(
+                        <>
+                          <GameButton
+                            asChild
+                            className={"!p-[5cqw] drop-shadow-lg mb-1"}
+                            variant={"ghost"}
+                          >
+                            <Link href={Admin.Cards.Edit(card.id)}>
+                              <Pencil style={{ width: "8cqw", height: "8cqw" }} />
+                            </Link>
+                          </GameButton>
 
-                        <GameButton
-                          className={"!p-[5cqw] hover:!text-red-400 drop-shadow-lg"}
-                          variant={"ghost"}
-                          onClick={() => setDeleteTarget(card)}
-                        >
-                          <Trash2 style={{ width: "8cqw", height: "8cqw" }} />
-                        </GameButton>
-                      </>
-                    )}
-                    anime={card.anime?.title}
-                    backgroundImage={card.config?.background_image}
-                    className={"!w-full"}
-                    image={card.image}
-                    key={card.id}
-                    name={card.name}
-                    rarity={card.rarity}
-                  />
+                          <GameButton
+                            className={"!p-[5cqw] hover:!text-red-400 drop-shadow-lg"}
+                            variant={"ghost"}
+                            onClick={() => setDeleteTarget(card)}
+                          >
+                            <Trash2 style={{ width: "8cqw", height: "8cqw" }} />
+                          </GameButton>
+                        </>
+                      )}
+                      anime={card.anime?.title}
+                      backgroundImage={card.config?.background_image}
+                      className={"!w-full"}
+                      image={card.image}
+                      name={card.name}
+                      rarity={card.rarity}
+                      tag={card.tag_name ?? undefined}
+                    />
+
+                  </div>
                 ))}
               </div>
             )}

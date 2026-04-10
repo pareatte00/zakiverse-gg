@@ -1,6 +1,8 @@
 "use client"
 
 import { GameCard } from "@/components/game/game-card"
+import { useGameSound } from "@/lib/hook/use-game-sound"
+import type { SoundId } from "@/lib/sound/sound-manager"
 import { type PanInfo, motion, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { PARTICLE_PRESETS } from "./particles"
@@ -107,6 +109,7 @@ const RARITY_REVEAL_CONFIG: Record<string, {
 const dragClamp_CQW = 10
 const DRAG_ROTATION = 4
 const SWIPE_THRESHOLD_PX = 40 // minimum drag distance to trigger dismiss
+const SKIP_THRESHOLD_PX = 120 // minimum upward drag to trigger skip-to-summary
 
 // ── Sub-phase type ─────────────────────────────────────────────
 
@@ -124,6 +127,7 @@ interface CardRevealProps {
 }
 
 export function CardReveal({ card, index, total, nextCardRarity, onAdvance, onSkipAll }: CardRevealProps) {
+  const { play } = useGameSound()
   const cardWidth = Math.min(260, typeof window !== "undefined" ? window.innerWidth * 0.62 : 260)
   const cardHeight = cardWidth * 1.5
   const cardRadius = Math.round(cardWidth * 0.08) // match game-card rounded-[8cqw]
@@ -135,9 +139,14 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance, onSk
   const rawOffsetRef = useRef(0)
   const wasPanningRef = useRef(false)
   const dragX = useMotionValue(0)
+  const dragY = useMotionValue(0)
   const springX = useSpring(dragX, { stiffness: 300, damping: 25, mass: 0.8 })
+  const springY = useSpring(dragY, { stiffness: 300, damping: 25, mass: 0.8 })
   const dragVisualX = useTransform(springX, [ -dragClamp, 0, dragClamp ], [ -cardWidth * 0.3, 0, cardWidth * 0.3 ])
+  const dragVisualY = useTransform(springY, (v) => Math.min(0, v * 0.6))
   const dragRotate = useTransform(springX, [ -dragClamp, 0, dragClamp ], [ -DRAG_ROTATION, 0, DRAG_ROTATION ])
+  const dragScale = useTransform(springY, (v) => v < 0 ? 1 - Math.min(0.15, Math.abs(v) / (cardHeight * 2)) : 1)
+  const dragOpacity = useTransform(springY, (v) => v < 0 ? 1 - Math.min(0.5, Math.abs(v) / (cardHeight * 1.5)) : 1)
   const nextCardOpacity = useTransform(springX, (v) => Math.min(1, Math.abs(v) / (dragClamp * 0.3)))
 
   // Reset state on card change
@@ -145,6 +154,7 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance, onSk
     setSubPhase("covered")
     advancedRef.current = false
     dragX.set(0)
+    play("card-appear")
 
     // Covered → dissolving transition
     const preTimer = setTimeout(() => {
@@ -152,25 +162,28 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance, onSk
     }, config.preRevealMs)
 
     return () => clearTimeout(preTimer)
-  }, [ index, config.preRevealMs, dragX ])
+  }, [ index, config.preRevealMs, dragX, play ])
 
   // Dissolving → revealed transition
   useEffect(() => {
     if (subPhase !== "dissolving") return
+
+    play(`reveal-${card.rarity}` as SoundId)
 
     const dissolveTimer = setTimeout(() => {
       setSubPhase("revealed")
     }, config.dissolveMs)
 
     return () => clearTimeout(dissolveTimer)
-  }, [ subPhase, config.dissolveMs ])
+  }, [ subPhase, config.dissolveMs, play, card.rarity ])
 
   const dismiss = useCallback((dir?: "left" | "right") => {
     if (advancedRef.current) return
 
     advancedRef.current = true
+    play("card-swipe")
     onAdvance(dir)
-  }, [ onAdvance ])
+  }, [ onAdvance, play ])
 
   function handleTap() {
     if (advancedRef.current) return
@@ -201,16 +214,19 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance, onSk
     rawOffsetRef.current = info.offset.x
     rawOffsetYRef.current = info.offset.y
     dragX.set(Math.max(-dragClamp, Math.min(dragClamp, info.offset.x)))
-  }, [ canSwipe, dragClamp, dragX ])
+    dragY.set(Math.max(-cardHeight * 0.5, Math.min(0, info.offset.y)))
+  }, [ canSwipe, cardHeight, dragClamp, dragX, dragY ])
   const handlePanEnd = useCallback(() => {
     if (!canSwipe) return
     const rawX = rawOffsetRef.current
     const rawY = rawOffsetYRef.current
 
-    // Swipe up → skip to summary
-    if (rawY < -SWIPE_THRESHOLD_PX && Math.abs(rawY) > Math.abs(rawX) && onSkipAll) {
+    // Swipe up → trigger skip (overlay handles fan-out animation)
+    if (rawY < -SKIP_THRESHOLD_PX && Math.abs(rawY) > Math.abs(rawX) && onSkipAll) {
       rawOffsetRef.current = 0
       rawOffsetYRef.current = 0
+      dragX.set(0)
+      dragY.set(0)
       onSkipAll()
 
       return
@@ -220,6 +236,7 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance, onSk
       dismiss(rawX < 0 ? "left" : "right")
       rawOffsetRef.current = 0
       rawOffsetYRef.current = 0
+      dragY.set(0)
 
       return
     }
@@ -227,7 +244,8 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance, onSk
     rawOffsetRef.current = 0
     rawOffsetYRef.current = 0
     dragX.set(0)
-  }, [ canSwipe, dragX, dismiss, onSkipAll ])
+    dragY.set(0)
+  }, [ canSwipe, dragX, dragY, dismiss, onSkipAll ])
 
   return (
     <div
@@ -266,7 +284,13 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance, onSk
         {/* Active card — swipeable after reveal */}
         <motion.div
           className={"absolute inset-0"}
-          style={{ x: dragVisualX, rotate: dragRotate }}
+          style={{
+            x:       dragVisualX,
+            y:       dragVisualY,
+            rotate:  dragRotate,
+            scale:   dragScale,
+            opacity: dragOpacity,
+          }}
           onPan={handlePan}
           onPanEnd={handlePanEnd}
         >
@@ -357,11 +381,21 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance, onSk
 
         {/* Swipe hint — positioned below card */}
         <p
-          className={"absolute left-1/2 -translate-x-1/2 select-none text-xs text-stone-600"}
+          className={"w-[200px] text-center absolute left-1/2 -translate-x-1/2 select-none text-xs text-stone-600"}
           style={{ top: cardHeight + 16 }}
         >
-          {subPhase === "revealed" ? "Swipe or tap to continue" : "\u00A0"}
+          {subPhase === "revealed" ? "← Swipe or tap to continue →" : "\u00A0"}
         </p>
+
+        {/* Skip hint — positioned above card */}
+        {subPhase === "revealed" && remaining > 1 && (
+          <p
+            className={"absolute left-1/2 -translate-x-1/2 select-none text-xs text-stone-600"}
+            style={{ top: -32 }}
+          >
+            ↑ Swipe up to skip all
+          </p>
+        )}
       </div>
     </div>
   )

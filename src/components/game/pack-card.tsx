@@ -235,7 +235,7 @@ function SealedTopEdge({ highestRarity, isTearing, onTearComplete }: SealedTopEd
 
   return (
     <div
-      className={"relative z-10 rounded-t-[3cqw]"}
+      className={"relative z-10 rounded-t-[3cqw] bg-stone-950"}
       ref={tearRef}
       style={{ height: "18.5cqw" }}
       onPointerCancel={isTearing ? handlePointerUp : undefined}
@@ -507,8 +507,8 @@ export function PackCard({ highestRarity, isTearing = false, onClick, onInfo, on
           {/* Sealed top edge with hang hole + tear support */}
           <SealedTopEdge highestRarity={highestRarity} isTearing={isTearing} onTearComplete={onTearComplete ?? (() => {})} />
 
-          {/* Main wrapper area */}
-          <div className={"relative overflow-hidden"} style={{ height: "169cqw" }}>
+          {/* Main wrapper area — negative margin tucks under seal to prevent gap during tilt */}
+          <div className={"relative overflow-hidden"} style={{ height: "169cqw", marginTop: "-0.5cqw" }}>
             {/* Pack image */}
             <img
               alt={pack.name}
@@ -590,15 +590,32 @@ export function PackCard({ highestRarity, isTearing = false, onClick, onInfo, on
 
             {/* Pack name */}
             <div className={"absolute inset-x-0"} style={{ bottom: "21.5cqw", padding: "0 6.2cqw" }}>
-              <h3
-                className={"text-center font-extrabold uppercase tracking-wider text-white"}
-                style={{
-                  fontSize:   "6.2cqw",
-                  textShadow: "0 0.7cqw 3.5cqw rgba(0,0,0,0.9), 0 0 10.4cqw rgba(0,0,0,0.6)",
-                }}
-              >
-                {pack.name}
-              </h3>
+              {pack.name_image
+                ? (
+                  <img
+                    alt={pack.name}
+                    className={"mx-auto block"}
+                    draggable={false}
+                    src={pack.name_image}
+                    style={{
+                      height:   "12cqw",
+                      width:    "auto",
+                      maxWidth: "100%",
+                      filter:   "drop-shadow(0 0.7cqw 3.5cqw rgba(0,0,0,0.9)) drop-shadow(0 0 10.4cqw rgba(0,0,0,0.6))",
+                    }}
+                  />
+                )
+                : (
+                  <h3
+                    className={"text-center font-extrabold uppercase tracking-wider text-white"}
+                    style={{
+                      fontSize:   "6.2cqw",
+                      textShadow: "0 0.7cqw 3.5cqw rgba(0,0,0,0.9), 0 0 10.4cqw rgba(0,0,0,0.6)",
+                    }}
+                  >
+                    {pack.name}
+                  </h3>
+                )}
             </div>
 
             {/* Bottom row: card count (left) + brand (right) */}

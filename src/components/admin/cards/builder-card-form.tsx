@@ -10,9 +10,10 @@ import { cn } from "@/lib/utils"
 import { Check, ChevronDown, ChevronUp, ChevronsUpDown, CircleAlert, Heart, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { ImagePicker } from "./image-picker"
+import { TagSelector } from "./tag-selector"
 
 export function isCardReady(data: BuilderCardData): boolean {
-  return !!(data.display_name && data.rarity_id && data.selected_anime && data.selected_image && (data.rarity_id !== "prismatic" || data.selected_background))
+  return !!(data.display_name && data.rarity_id && data.selected_anime && data.selected_image && data.tag_id && (data.rarity_id !== "prismatic" || data.selected_background))
 }
 
 interface BuilderCardFormProps {
@@ -139,7 +140,7 @@ export function BuilderCardForm({ data, collapsed, onCollapsedChange }: BuilderC
 
       <div className={"flex gap-6"}>
         {/* Preview */}
-        <div className={"shrink-0"}>
+        <div className={"w-48 shrink-0"}>
           <div className={"mb-1.5 flex items-center gap-2"}>
             <span className={"text-[11px] uppercase tracking-wider text-zinc-500"}>#{malId}</span>
 
@@ -156,6 +157,7 @@ export function BuilderCardForm({ data, collapsed, onCollapsedChange }: BuilderC
             image={data.selected_image}
             name={data.display_name || "Card Name"}
             rarity={gameRarity}
+            tag={data.tag_name || undefined}
           />
         </div>
 
@@ -264,6 +266,16 @@ export function BuilderCardForm({ data, collapsed, onCollapsedChange }: BuilderC
               : data.selected_anime
                 ? <p className={"text-sm text-zinc-300"}>{data.selected_anime.title}</p>
                 : <p className={"text-sm text-zinc-600"}>No anime detected</p>}
+          </div>
+
+          {/* Tag */}
+          <div>
+            <label className={"mb-2 block text-[11px] uppercase tracking-wider text-zinc-500"}>Tag</label>
+
+            <TagSelector
+              value={data.tag_id}
+              onChange={(tagId, tagName) => update({ tag_id: tagId, tag_name: tagName })}
+            />
           </div>
 
           {/* Character image picker */}

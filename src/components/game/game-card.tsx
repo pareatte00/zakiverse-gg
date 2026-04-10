@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client"
 
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { useEffect, useRef, useState } from "react"
 
@@ -178,6 +179,14 @@ function SlidingText({ children, className, containerClassName, hovered, style }
   )
 }
 
+const TAG_COLORS: Record<Rarity, { bg: string, text: string, border: string }> = {
+  common:    { bg: "bg-stone-800/70", text: "text-stone-400", border: "border-stone-600/50" },
+  rare:      { bg: "bg-blue-950/70", text: "text-blue-300", border: "border-blue-500/40" },
+  epic:      { bg: "bg-purple-950/70", text: "text-purple-300", border: "border-purple-500/40" },
+  legendary: { bg: "bg-amber-950/70", text: "text-amber-300", border: "border-amber-500/40" },
+  prismatic: { bg: "bg-cyan-950/70", text: "text-cyan-300", border: "border-cyan-400/40" },
+}
+
 interface GameCardProps {
   actions?:         React.ReactNode
   anime?:           string
@@ -188,9 +197,10 @@ interface GameCardProps {
   noModal?:         boolean
   rarity?:          Rarity
   static?:          boolean
+  tag?:             string
 }
 
-export function GameCard({ name, anime, image, backgroundImage, rarity = "common", className, actions, noModal = false, static: isStatic = false }: GameCardProps) {
+export function GameCard({ name, anime, image, backgroundImage, rarity = "common", className, actions, noModal = false, static: isStatic = false, tag }: GameCardProps) {
   const config = RARITY_CONFIG[rarity]
   const cardRef = useRef<HTMLDivElement>(null)
   const bgRef = useRef<HTMLImageElement>(null)
@@ -442,8 +452,11 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
               }}
             >
               <SlidingText
-                className={cn("font-semibold leading-none", config.nameColor)}
-                containerClassName={"absolute left-[5cqw] right-[5cqw] bottom-[13cqw]"}
+                className={cn("font-semibold leading-tight", config.nameColor)}
+                containerClassName={cn(
+                  "absolute left-[5cqw] right-[5cqw]",
+                  "bottom-[21cqw]",
+                )}
                 hovered={hovered}
                 style={{
                   fontSize: "8cqw",
@@ -456,12 +469,27 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
               {anime && (
                 <SlidingText
                   className={"text-stone-500 italic leading-none"}
-                  containerClassName={"absolute left-[5cqw] right-[5cqw] bottom-[5cqw]"}
+                  containerClassName={"absolute left-[5cqw] right-[5cqw] bottom-[13cqw]"}
                   hovered={hovered}
                   style={{ fontSize: "6cqw" }}
                 >
                   {anime}
                 </SlidingText>
+              )}
+
+              {/* Tag badge — just above name */}
+              {tag && (
+                <Badge
+                  className={cn(
+                    "absolute left-[5cqw] border px-[3cqw] py-[1cqw] leading-none backdrop-blur-sm",
+                    TAG_COLORS[rarity].bg,
+                    TAG_COLORS[rarity].text,
+                    TAG_COLORS[rarity].border,
+                  )}
+                  style={{ fontSize: "4.5cqw", bottom: tag && anime ? "5cqw" : "17cqw" }}
+                >
+                  {tag}
+                </Badge>
               )}
             </div>
 

@@ -8,6 +8,7 @@ import { cardFindOneById } from "@/lib/api/db/api.card"
 import type { PackPayload, PullMode } from "@/lib/api/db/api.pack"
 import { packPull } from "@/lib/api/db/api.pack"
 import { RARITIES } from "@/lib/const/const.rarity"
+import { useGameSound } from "@/lib/hook/use-game-sound"
 import { cn } from "@/lib/utils"
 import type { MotionValue } from "framer-motion"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
@@ -181,6 +182,7 @@ interface PackInspectOverlayProps {
 }
 
 export function PackInspectOverlay({ pack, skipEntry, onOpenWithCards, onClose, onEntryDone }: PackInspectOverlayProps) {
+  const { play } = useGameSound()
   const [ state, dispatch ] = useReducer(inspectReducer, INITIAL_INSPECT)
   // ── Responsive pack width ──
   const [ packWidth, setPackWidth ] = useState(calcPackWidth)
@@ -286,15 +288,17 @@ export function PackInspectOverlay({ pack, skipEntry, onOpenWithCards, onClose, 
     const delta = rawDelta.get()
 
     if (delta <= -threshold) {
+      play("pull-select")
       dispatch({ type: "SELECT_MODE", mode: "single" })
     }
     else if (delta >= threshold) {
+      play("pull-select")
       dispatch({ type: "SELECT_MODE", mode: "multi" })
     }
 
     rawDelta.set(0)
     rawY.set(0)
-  }, [ isDragging, rawDelta, threshold, rawY ])
+  }, [ isDragging, rawDelta, threshold, rawY, play ])
 
   // ── Fire API on selection ──
   useEffect(() => {
@@ -323,6 +327,12 @@ export function PackInspectOverlay({ pack, skipEntry, onOpenWithCards, onClose, 
 
     return () => clearTimeout(timer)
   }, [ state.phase ])
+
+  // ── Phase-based sound effects ──
+  useEffect(() => {
+    if (state.phase === "tearing") play("pack-tear")
+    if (state.phase === "sliding") play("pack-slide")
+  }, [ state.phase, play ])
 
   // ── Dismiss animation ──
   const handleDismiss = useCallback(() => {

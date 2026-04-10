@@ -34,31 +34,26 @@ export interface PackPayload {
   description:    string | null
   image:          string
   name_image:     string | null
-  type:           "standard" | "limited" | "event"
   cards_per_pull: number
   sort_order:     number
-  is_active:      boolean
-  open_at:        string | null
-  close_at:       string | null
   config:         PackConfig
-  pool_id:        string | null
+  pool_id:        string
+  rotation_order: number | null
   total_cards:    number
   cards?:         PackCardPayload[]
 }
 
 export interface CreatePackRequest {
-  code:           string
-  name:           string
-  description?:   string
-  image:          string
-  name_image?:    string
-  type:           "standard" | "limited" | "event"
-  cards_per_pull: number
-  sort_order?:    number
-  is_active:      boolean
-  open_at?:       string
-  close_at?:      string
-  config:         PackConfig
+  code:            string
+  name:            string
+  description?:    string
+  image:           string
+  name_image?:     string
+  cards_per_pull:  number
+  sort_order?:     number
+  config:          PackConfig
+  pool_id:         string
+  rotation_order?: number
 }
 
 export interface UpdatePackRequest {
@@ -67,21 +62,15 @@ export interface UpdatePackRequest {
   description?:    string
   image?:          string
   name_image?:     string
-  type?:           "standard" | "limited" | "event"
   cards_per_pull?: number
   sort_order?:     number
-  is_active?:      boolean
-  open_at?:        string
-  close_at?:       string
   config?:         PackConfig
-  pool_id?:        string
+  rotation_order?: number
 }
 
 export interface PackFindAllQuery {
-  active_only?: boolean
-  type?:        "standard" | "limited" | "event"
-  page:         number
-  limit:        number
+  page:  number
+  limit: number
 }
 
 export interface AddPackCardsRequestItem {
@@ -111,12 +100,34 @@ export interface PullResultPayload {
   cards: PulledCardPayload[]
 }
 
+export interface PityInfoPayload {
+  rarity:    string
+  counter:   number
+  threshold: number
+}
+
+export interface PullHistoryPayload {
+  id:          string
+  pack_id:     string
+  card_id:     string
+  rarity:      string
+  is_pity:     boolean
+  is_featured: boolean
+  is_new:      boolean
+  pulled_at:   string
+}
+
+export interface PaginationQuery {
+  page:  number
+  limit: number
+}
+
 export async function packFindAll(query: PackFindAllQuery) {
   const token = await findCookie(Cookie.accessToken)
 
   return await api.get<HttpResponse<PackPayload[]>>({
     url:         "/v1/pack",
-    data:        query,
+    params:      query,
     bearerToken: token,
     serviceKey:  Env.systemServiceKey,
   })
@@ -194,6 +205,27 @@ export async function packPull(id: string, mode: PullMode) {
   return await api.post<HttpResponse<PullResultPayload>>({
     url:         `/v1/pack/${id}/pull`,
     data:        { mode },
+    bearerToken: token,
+    serviceKey:  Env.systemServiceKey,
+  })
+}
+
+export async function packGetPityInfo(id: string) {
+  const token = await findCookie(Cookie.accessToken)
+
+  return await api.get<HttpResponse<PityInfoPayload[]>>({
+    url:         `/v1/pack/${id}/pity`,
+    bearerToken: token,
+    serviceKey:  Env.systemServiceKey,
+  })
+}
+
+export async function packGetPullHistory(id: string, query: PaginationQuery) {
+  const token = await findCookie(Cookie.accessToken)
+
+  return await api.get<HttpResponse<PullHistoryPayload[]>>({
+    url:         `/v1/pack/${id}/history`,
+    params:      query,
     bearerToken: token,
     serviceKey:  Env.systemServiceKey,
   })

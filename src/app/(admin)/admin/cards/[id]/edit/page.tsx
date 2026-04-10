@@ -2,6 +2,7 @@
 
 import { AdminPageHeader } from "@/components/admin/admin-page-header"
 import { ImagePicker } from "@/components/admin/cards/image-picker"
+import { TagSelector } from "@/components/admin/cards/tag-selector"
 import { GameButton } from "@/components/game/game-button"
 import { GameCard, type Rarity } from "@/components/game/game-card"
 import type { CardPayload } from "@/lib/api/db/api.card"
@@ -26,6 +27,7 @@ export default function EditCardPage() {
   const [ rarity, setRarity ] = useState<Rarity>("common")
   const [ image, setImage ] = useState("")
   const [ background, setBackground ] = useState("")
+  const [ tagId, setTagId ] = useState("")
   const [ customImages, setCustomImages ] = useState<string[]>([])
   const initialized = useRef(false)
   const loadCard = useCallback(async () => {
@@ -49,6 +51,7 @@ export default function EditCardPage() {
     setRarity(c.rarity)
     setImage(c.image)
     setBackground(c.config.background_image ?? "")
+    setTagId(c.tag_id ?? "")
     setLoading(false)
   }, [ params.id, router ])
 
@@ -65,6 +68,7 @@ export default function EditCardPage() {
       name:   name.trim(),
       rarity,
       image,
+      tag_id: tagId || undefined,
       config: {
         ...(rarity === "prismatic" && background ? { background_image: background } : {}),
       },
@@ -164,6 +168,16 @@ export default function EditCardPage() {
                 )
               })}
             </div>
+          </div>
+
+          {/* Tag */}
+          <div>
+            <label className={"mb-2 block text-[11px] uppercase tracking-wider text-zinc-500"}>Tag</label>
+
+            <TagSelector
+              value={tagId}
+              onChange={(id) => setTagId(id)}
+            />
           </div>
 
           {/* Image */}

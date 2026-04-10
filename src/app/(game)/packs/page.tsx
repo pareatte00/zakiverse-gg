@@ -16,6 +16,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import type { PackPayload, PullMode } from "@/lib/api/db/api.pack"
 import { packFindAll, packFindOneById } from "@/lib/api/db/api.pack"
 import { RARITY_COLORS } from "@/lib/const/const.rarity"
+import { useGameSound } from "@/lib/hook/use-game-sound"
 import { Calendar, Clock, Gift, Layers, Loader2, Package, Sparkles } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
@@ -31,7 +32,7 @@ export default function PacksPage() {
   const [ packs, setPacks ] = useState<PackPayload[]>([])
   const [ loading, setLoading ] = useState(true)
   const initialized = useRef(false)
-  const { state, startRevealing, tapReveal, skipToSummary, close } = usePackOpening()
+  const { state, startRevealing, tapReveal, close } = usePackOpening()
   const [ inspectPack, setInspectPack ] = useState<PackPayload | null>(null)
   const [ infoPack, setInfoPack ] = useState<PackPayload | null>(null)
   const [ infoLoading, setInfoLoading ] = useState(false)
@@ -63,9 +64,11 @@ export default function PacksPage() {
 
   const limitedPacks = useMemo(() => packs.filter((p) => p.close_at), [ packs ])
   const standardPacks = useMemo(() => packs.filter((p) => !p.close_at), [ packs ])
+  const { play } = useGameSound()
   const handleInspect = useCallback((pack: PackPayload) => {
+    play("pack-select")
     setInspectPack(pack)
-  }, [])
+  }, [ play ])
   const lastOpenedPackRef = useRef<PackPayload | null>(null)
   const [ returningFromOpen, setReturningFromOpen ] = useState(false)
   const handleInspectComplete = useCallback((mode: PullMode, cards: EnrichedPulledCard[]) => {
@@ -167,7 +170,6 @@ export default function PacksPage() {
       <PackOpeningOverlay
         state={state}
         onClose={handleClose}
-        onSkipAll={skipToSummary}
         onTapReveal={tapReveal}
       />
 

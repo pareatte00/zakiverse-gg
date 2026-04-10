@@ -20,6 +20,10 @@ export const Admin = {
     Builder: "/admin/cards/create/builder",
     Edit:    (id: string) => `/admin/cards/${id}/edit` as const,
   },
+  Tags: {
+    List:   "/admin/tags",
+    Detail: (id: string) => `/admin/tags/${id}` as const,
+  },
   Packs: {
     List:   "/admin/packs",
     Create: "/admin/packs/create",
