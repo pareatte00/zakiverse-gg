@@ -3,11 +3,18 @@ import usexAxios from "../../hook/use-xaxios"
 
 export const api = usexAxios(Env.apiUrl)
 
+export interface PaginationMeta {
+  total:       number
+  page:        number
+  limit:       number
+  total_pages: number
+}
+
 export interface HttpResponse<T = any> {
   timestamp: string
   payload?:  T
   error?:    ErrorDetail
-  meta?:     any
+  meta?:     PaginationMeta
   debug?:    any
   version:   string
 }

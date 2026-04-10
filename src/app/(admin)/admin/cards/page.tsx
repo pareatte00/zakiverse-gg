@@ -45,7 +45,7 @@ export default function CardsListPage() {
   const [ sortOrder, setSortOrder ] = useState<CardSortOrder>("asc")
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
   const [ debouncedSearch, setDebouncedSearch ] = useState("")
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT))
+  const [ totalPages, setTotalPages ] = useState(1)
 
   // Debounce search input
   useEffect(() => {
@@ -75,6 +75,7 @@ export default function CardsListPage() {
 
     setCards(response?.payload ?? [])
     setTotal(response?.meta?.total ?? response?.payload?.length ?? 0)
+    setTotalPages(response?.meta?.total_pages ?? 1)
     setLoading(false)
   }, [])
 

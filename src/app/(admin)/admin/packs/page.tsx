@@ -32,7 +32,7 @@ export default function PacksListPage() {
   const [ deleteTarget, setDeleteTarget ] = useState<PackPayload | null>(null)
   const [ deleting, setDeleting ] = useState(false)
   const [ togglingId, setTogglingId ] = useState<string | null>(null)
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT))
+  const [ totalPages, setTotalPages ] = useState(1)
   const initialized = useRef(false)
   const fetchPacks = useCallback(async (p: number) => {
     setLoading(true)
@@ -41,6 +41,7 @@ export default function PacksListPage() {
 
     setPacks(response?.payload ?? [])
     setTotal(response?.meta?.total ?? response?.payload?.length ?? 0)
+    setTotalPages(response?.meta?.total_pages ?? 1)
     setLoading(false)
   }, [])
 

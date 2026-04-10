@@ -24,7 +24,7 @@ export default function TagDetailPage() {
   const [ cardsLoading, setCardsLoading ] = useState(true)
   const [ page, setPage ] = useState(1)
   const [ total, setTotal ] = useState(0)
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT))
+  const [ totalPages, setTotalPages ] = useState(1)
 
   // Fetch tag info
   useEffect(() => {
@@ -56,6 +56,7 @@ export default function TagDetailPage() {
 
     setCards(response?.payload ?? [])
     setTotal(response?.meta?.total ?? response?.payload?.length ?? 0)
+    setTotalPages(response?.meta?.total_pages ?? 1)
     setCardsLoading(false)
   }, [ tagId ])
 

@@ -17,14 +17,19 @@ import type { CardTagPayload } from "@/lib/api/db/api.card-tag"
 import { cardTagCreateOne, cardTagDeleteOneById, cardTagFindAll, cardTagUpdateOneById } from "@/lib/api/db/api.card-tag"
 import { Admin } from "@/lib/const/const.url"
 import { cn } from "@/lib/utils"
-import { Check, Eye, Loader2, Pencil, Plus, Search, Tag, Trash2, X } from "lucide-react"
+import { Check, ChevronLeft, ChevronRight, Eye, Loader2, Pencil, Plus, Search, Tag, Trash2, X } from "lucide-react"
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
+const PAGE_LIMIT = 20
+
 export default function TagsListPage() {
   const [ tags, setTags ] = useState<CardTagPayload[]>([])
   const [ loading, setLoading ] = useState(true)
+  const [ page, setPage ] = useState(1)
+  const [ total, setTotal ] = useState(0)
+  const [ totalPages, setTotalPages ] = useState(1)
   const [ creating, setCreating ] = useState(false)
   const [ newName, setNewName ] = useState("")
   const [ showCreate, setShowCreate ] = useState(false)
@@ -35,19 +40,35 @@ export default function TagsListPage() {
   const [ deleteCardCount, setDeleteCardCount ] = useState<number | null>(null)
   const [ deleting, setDeleting ] = useState(false)
   const [ search, setSearch ] = useState("")
+  const [ debouncedSearch, setDebouncedSearch ] = useState("")
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null)
   const createInputRef = useRef<HTMLInputElement>(null)
   const editInputRef = useRef<HTMLInputElement>(null)
-  const filteredTags = search.trim()
-    ? tags.filter((t) => t.name.toLowerCase().includes(search.trim().toLowerCase()))
-    : tags
+
+  // Debounce search input
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+
+    searchTimeout.current = setTimeout(() => {
+      setDebouncedSearch(search)
+      setPage(1)
+    }, 400)
+
+    return () => {
+      if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    }
+  }, [ search ])
+
   const fetchTags = useCallback(async () => {
     setLoading(true)
 
-    const { response } = await cardTagFindAll({ page: 1, limit: 100 })
+    const { response } = await cardTagFindAll({ page, limit: PAGE_LIMIT, search: debouncedSearch || undefined })
 
     setTags(response?.payload ?? [])
+    setTotal(response?.meta?.total ?? 0)
+    setTotalPages(response?.meta?.total_pages ?? 1)
     setLoading(false)
-  }, [])
+  }, [ page, debouncedSearch ])
 
   useEffect(() => {
     void fetchTags()
@@ -241,16 +262,16 @@ export default function TagsListPage() {
               ))}
             </div>
           )
-          : filteredTags.length === 0
+          : tags.length === 0
             ? (
               <div className={"flex flex-col items-center gap-4 py-20"}>
                 <Tag className={"h-10 w-10 text-zinc-700"} />
 
                 <p className={"text-sm text-zinc-500"}>
-                  {search.trim() ? "No tags match your search." : "No tags found."}
+                  {debouncedSearch ? "No tags match your search." : "No tags found."}
                 </p>
 
-                {search.trim()
+                {debouncedSearch
                   ? (
                     <GameButton
                       variant={"ghost"}
@@ -278,7 +299,7 @@ export default function TagsListPage() {
             )
             : (
               <div className={"space-y-2"}>
-                {filteredTags.map((tag) => (
+                {tags.map((tag) => (
                   <div
                     className={cn(
                       "flex items-center gap-4 rounded-xl border bg-zinc-900/60 px-4 py-3",
@@ -369,6 +390,37 @@ export default function TagsListPage() {
               </div>
             )}
       </div>
+
+      {/* Pagination */}
+      {!loading && tags.length > 0 && (
+        <div className={"mt-6 flex items-center justify-between"}>
+          <p className={"text-xs text-zinc-500"}>
+            Page {page} of {totalPages} ({total} {total === 1 ? "tag" : "tags"})
+          </p>
+
+          <div className={"flex items-center gap-2"}>
+            <GameButton
+              disabled={page <= 1}
+              variant={"ghost"}
+              onClick={() => setPage(page - 1)}
+            >
+              <ChevronLeft className={"h-4 w-4"} />
+              {" "}
+              Previous
+            </GameButton>
+
+            <GameButton
+              disabled={page >= totalPages}
+              variant={"ghost"}
+              onClick={() => setPage(page + 1)}
+            >
+              Next
+              {" "}
+              <ChevronRight className={"h-4 w-4"} />
+            </GameButton>
+          </div>
+        </div>
+      )}
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
