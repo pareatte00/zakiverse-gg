@@ -6,7 +6,7 @@ import { Admin, Private, Public } from "@/lib/const/const.url"
 import { useCardCreation } from "@/lib/context/card-creation-context"
 import { deleteCookie } from "@/lib/hook/cookie"
 import { cn } from "@/lib/utils"
-import { ChevronDown, ChevronRight, CreditCard, FileStack, Gamepad2, Gift, Layers, LayoutDashboard, LogOut, Plus, Tag } from "lucide-react"
+import { Boxes, ChevronDown, ChevronRight, CreditCard, FileStack, Gamepad2, Gift, Layers, LayoutDashboard, LogOut, Plus, Tag } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
@@ -30,6 +30,7 @@ const EXACT_MATCH_ROUTES: Set<string> = new Set([
   Admin.Dashboard,
   Admin.Cards.List,
   Admin.Packs.List,
+  Admin.Pools.List,
   Admin.Tags.List,
 ])
 
@@ -77,10 +78,22 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    label: "Packs",
-    items: [
-      { label: "Manage Packs", href: Admin.Packs.List, icon: Gift },
-      { label: "Create Pack", href: Admin.Packs.Create, icon: Plus },
+    label:    "Banners",
+    children: [
+      {
+        label: "Packs",
+        items: [
+          { label: "Manage Packs", href: Admin.Packs.List, icon: Gift },
+          { label: "Create Pack", href: Admin.Packs.Create, icon: Plus },
+        ],
+      },
+      {
+        label: "Pools",
+        items: [
+          { label: "Manage Pools", href: Admin.Pools.List, icon: Boxes },
+          { label: "Create Pool", href: Admin.Pools.Create, icon: Plus },
+        ],
+      },
     ],
   },
 ]

@@ -52,7 +52,7 @@ export interface PaginationQuery {
   limit: number
 }
 
-export type CardSortField = "name" | "rarity"
+export type CardSortField = "name" | "rarity" | "favorite"
 
 export type CardSortOrder = "asc" | "desc"
 

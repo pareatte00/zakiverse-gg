@@ -114,9 +114,7 @@ export default function EditCardPage() {
 
       <div className={"mt-8 flex gap-8"}>
         {/* Preview */}
-        <div className={"shrink-0"}>
-          <p className={"mb-2 text-[11px] uppercase tracking-wider text-zinc-500"}>Preview</p>
-
+        <div className={"w-48 shrink-0"}>
           <GameCard
             anime={card.anime?.title}
             backgroundImage={rarity === "prismatic" ? background : undefined}

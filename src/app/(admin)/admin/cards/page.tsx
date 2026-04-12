@@ -22,7 +22,7 @@ import { cardTagFindAll } from "@/lib/api/db/api.card-tag"
 import { RARITIES, RARITY_COLORS } from "@/lib/const/const.rarity"
 import { Admin } from "@/lib/const/const.url"
 import { cn } from "@/lib/utils"
-import { ArrowDownAZ, ArrowUpZA, Check, ChevronLeft, ChevronRight, ChevronsUpDown, Layers, Loader2, Pencil, Plus, Search, Tag, Trash2, X } from "lucide-react"
+import { ArrowDown01, ArrowDownAZ, ArrowUp01, ArrowUpZA, Check, ChevronLeft, ChevronRight, ChevronsUpDown, Layers, Loader2, Pencil, Plus, Search, Tag, Trash2, X } from "lucide-react"
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -331,6 +331,18 @@ export default function CardsListPage() {
                 ? <ArrowUpZA className={"h-3.5 w-3.5"} />
                 : <ArrowDownAZ className={"h-3.5 w-3.5"} />}
               Rarity
+            </GameButton>
+
+            <GameButton
+              className={"!px-2.5 !py-1 !text-xs !font-semibold"}
+              pressed={sortField === "favorite"}
+              variant={"ghost"}
+              onClick={() => toggleSort("favorite")}
+            >
+              {sortField === "favorite" && sortOrder === "desc"
+                ? <ArrowUp01 className={"h-3.5 w-3.5"} />
+                : <ArrowDown01 className={"h-3.5 w-3.5"} />}
+              Favorite
             </GameButton>
           </div>
         </div>

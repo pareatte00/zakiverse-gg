@@ -63,6 +63,7 @@ export interface CreatePackPoolRequest {
   rotation_hour?:      number
   rotation_order_mode: RotationOrderMode
   preview_days?:       number
+  pack_ids?:           string[]
 }
 
 export interface UpdatePackPoolRequest {
@@ -81,6 +82,20 @@ export interface UpdatePackPoolRequest {
   rotation_hour?:       number
   rotation_order_mode?: RotationOrderMode
   preview_days?:        number
+  pack_ids?:            string[]
+}
+
+export interface SortPackPoolRequest {
+  banner_type: BannerType
+  ids:         string[]
+}
+
+export interface SortPacksRequest {
+  ids: string[]
+}
+
+export interface SortRotationRequest {
+  ids: string[]
 }
 
 export interface PackPoolFindAllQuery {
@@ -162,6 +177,39 @@ export async function packPoolDeleteOneById(id: string) {
 
   return await api.delete<HttpResponse<void>>({
     url:         `/v1/pack-pool/${id}`,
+    bearerToken: token,
+    serviceKey:  Env.systemServiceKey,
+  })
+}
+
+export async function packPoolSort(param: SortPackPoolRequest) {
+  const token = await findCookie(Cookie.accessToken)
+
+  return await api.post<HttpResponse<void>>({
+    url:         "/v1/pack-pool/sort",
+    data:        param,
+    bearerToken: token,
+    serviceKey:  Env.systemServiceKey,
+  })
+}
+
+export async function packPoolSortPacks(id: string, param: SortPacksRequest) {
+  const token = await findCookie(Cookie.accessToken)
+
+  return await api.post<HttpResponse<void>>({
+    url:         `/v1/pack-pool/${id}/sort-packs`,
+    data:        param,
+    bearerToken: token,
+    serviceKey:  Env.systemServiceKey,
+  })
+}
+
+export async function packPoolSortRotation(id: string, param: SortRotationRequest) {
+  const token = await findCookie(Cookie.accessToken)
+
+  return await api.post<HttpResponse<void>>({
+    url:         `/v1/pack-pool/${id}/sort-rotation`,
+    data:        param,
     bearerToken: token,
     serviceKey:  Env.systemServiceKey,
   })

@@ -2,6 +2,7 @@
 
 import { AdminPageHeader } from "@/components/admin/admin-page-header"
 import { GameButton } from "@/components/game/game-button"
+import { PackCard } from "@/components/game/pack-card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,10 +14,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { PackPayload } from "@/lib/api/db/api.pack"
-import { packDeleteOneById, packFindAll, packUpdateOneById } from "@/lib/api/db/api.pack"
-import { RARITY_COLORS } from "@/lib/const/const.rarity"
+import { packDeleteOneById, packFindAll } from "@/lib/api/db/api.pack"
 import { Admin } from "@/lib/const/const.url"
-import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight, Gift, Loader2, Pencil, Plus, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -31,7 +30,6 @@ export default function PacksListPage() {
   const [ total, setTotal ] = useState(0)
   const [ deleteTarget, setDeleteTarget ] = useState<PackPayload | null>(null)
   const [ deleting, setDeleting ] = useState(false)
-  const [ togglingId, setTogglingId ] = useState<string | null>(null)
   const [ totalPages, setTotalPages ] = useState(1)
   const initialized = useRef(false)
   const fetchPacks = useCallback(async (p: number) => {
@@ -64,22 +62,6 @@ export default function PacksListPage() {
     }
   }, [ page, fetchPacks ])
 
-  async function handleToggleActive(pack: PackPayload) {
-    setTogglingId(pack.id)
-
-    const { status } = await packUpdateOneById(pack.id, { is_active: !pack.is_active })
-
-    setTogglingId(null)
-
-    if (status < 400) {
-      setPacks((prev) => prev.map((p) => p.id === pack.id ? { ...p, is_active: !p.is_active } : p))
-      toast.success(pack.is_active ? "Pack deactivated" : "Pack activated")
-    }
-    else {
-      toast.error("Failed to update pack")
-    }
-  }
-
   async function handleDelete() {
     if (!deleteTarget) return
 
@@ -99,12 +81,6 @@ export default function PacksListPage() {
     }
   }
 
-  function formatDate(dateStr: string | null) {
-    if (!dateStr) return "—"
-
-    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-  }
-
   return (
     <div className={"p-8"}>
       <AdminPageHeader
@@ -121,13 +97,15 @@ export default function PacksListPage() {
         title={"Packs"}
       />
 
-      {/* Pack list */}
-      <div className={"mt-6 space-y-3"}>
+      {/* Pack grid */}
+      <div className={"mt-6"}>
         {loading
           ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div className={"h-20 animate-pulse rounded-xl bg-zinc-800/40"} key={i} />
-            ))
+            <div className={"grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4"}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div className={"aspect-[1/1.5] animate-pulse rounded-xl bg-zinc-800/40"} key={i} />
+              ))}
+            </div>
           )
           : packs.length === 0
             ? (
@@ -144,97 +122,57 @@ export default function PacksListPage() {
                 </GameButton>
               </div>
             )
-            : packs.map((pack) => (
-              <div
-                className={"flex items-center gap-4 rounded-xl border border-zinc-800/40 bg-zinc-900/60 px-5 py-4 transition-colors hover:bg-zinc-800/40"}
-                key={pack.id}
-              >
-                {/* Pack image */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  alt={pack.name}
-                  className={"h-14 w-14 shrink-0 rounded-lg object-cover"}
-                  src={pack.image}
-                />
-
-                {/* Pack info */}
-                <div className={"min-w-0 flex-1"}>
-                  <div className={"flex items-center gap-2"}>
-                    <p className={"truncate text-sm font-medium text-zinc-200"}>{pack.name}</p>
-
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
-                        pack.is_active
-                          ? "bg-emerald-500/10 text-emerald-400"
-                          : "bg-zinc-700/30 text-zinc-500",
-                      )}
-                    >
-                      {pack.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </div>
-
-                  {pack.description && (
-                    <p className={"mt-0.5 truncate text-xs text-zinc-500"}>{pack.description}</p>
-                  )}
-
-                  <div className={"mt-1.5 flex items-center gap-3 text-[11px] text-zinc-600"}>
-                    <span>{pack.cards_per_pull} cards/pull</span>
-                    <span className={"text-zinc-700"}>|</span>
-                    <span>Open: {formatDate(pack.open_at)}</span>
-                    <span className={"text-zinc-700"}>|</span>
-                    <span>Close: {formatDate(pack.close_at)}</span>
-
-                    {/* Rarity rates preview */}
-                    {pack.config?.rarity_rates && (
-                      <>
-                        <span className={"text-zinc-700"}>|</span>
-
-                        <span className={"flex items-center gap-1"}>
-                          {Object.entries(pack.config.rarity_rates).map(([ rarity, rate ]) => {
-                            const colors = RARITY_COLORS[rarity as keyof typeof RARITY_COLORS]
-
-                            return (
-                              <span className={cn("font-medium", colors?.text ?? "text-zinc-400")} key={rarity}>
-                                {rate}%
-                              </span>
-                            )
-                          })}
+            : (
+              <div className={"grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4"}>
+                {packs.map((pack) => (
+                  <div className={"relative"} key={pack.id}>
+                    {/* Pool status badge */}
+                    {pack.pool_id
+                      ? (
+                        <Link
+                          className={"absolute left-2 top-2 z-40 flex items-center gap-1 rounded-full bg-emerald-950 px-2.5 py-1 text-[8px] font-semibold uppercase text-emerald-400 transition-colors hover:bg-emerald-900"}
+                          href={Admin.Pools.Edit(pack.pool_id)}
+                        >
+                          <span className={"h-1.5 w-1.5 rounded-full bg-emerald-400"} />
+                          In Pool
+                        </Link>
+                      )
+                      : (
+                        <span className={"absolute left-2 top-2 z-40 flex items-center gap-1 rounded-full bg-zinc-900 px-2.5 py-1 text-[8px] font-semibold uppercase text-zinc-500"}>
+                          <span className={"h-1.5 w-1.5 rounded-full bg-zinc-600"} />
+                          No Pool
                         </span>
-                      </>
-                    )}
+                      )}
+
+                    <PackCard
+                      actions={(
+                        <>
+                          <GameButton
+                            asChild
+                            className={"!p-[5cqw] drop-shadow-lg"}
+                            variant={"ghost"}
+                          >
+                            <Link href={Admin.Packs.Edit(pack.id)}>
+                              <Pencil style={{ width: "8cqw", height: "8cqw" }} />
+                            </Link>
+                          </GameButton>
+
+                          <GameButton
+                            className={"!p-[5cqw] drop-shadow-lg hover:!text-red-400"}
+                            variant={"ghost"}
+                            onClick={() => setDeleteTarget(pack)}
+                          >
+                            <Trash2 style={{ width: "8cqw", height: "8cqw" }} />
+                          </GameButton>
+                        </>
+                      )}
+                      pack={pack}
+                      tiltEnabled={false}
+                    />
                   </div>
-                </div>
-
-                {/* Actions */}
-                <div className={"flex shrink-0 items-center gap-2"}>
-                  <GameButton
-                    className={"!px-2.5 !py-1.5 !text-xs"}
-                    disabled={togglingId === pack.id}
-                    variant={"ghost"}
-                    onClick={() => void handleToggleActive(pack)}
-                  >
-                    {togglingId === pack.id
-                      ? <Loader2 className={"h-3.5 w-3.5 animate-spin"} />
-                      : pack.is_active ? "Deactivate" : "Activate"}
-                  </GameButton>
-
-                  <GameButton asChild className={"!px-2.5 !py-1.5"} variant={"ghost"}>
-                    <Link href={Admin.Packs.Edit(pack.id)}>
-                      <Pencil className={"h-3.5 w-3.5"} />
-                    </Link>
-                  </GameButton>
-
-                  <GameButton
-                    className={"!px-2.5 !py-1.5 hover:!text-red-400"}
-                    variant={"ghost"}
-                    onClick={() => setDeleteTarget(pack)}
-                  >
-                    <Trash2 className={"h-3.5 w-3.5"} />
-                  </GameButton>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
       </div>
 
       {/* Pagination */}

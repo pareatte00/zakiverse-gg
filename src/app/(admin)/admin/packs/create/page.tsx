@@ -1,24 +1,26 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client"
 
 import { AdminPageHeader } from "@/components/admin/admin-page-header"
 import { ImagePicker } from "@/components/admin/cards/image-picker"
 import { GameButton } from "@/components/game/game-button"
-import { GameCard } from "@/components/game/game-card"
-import { Calendar } from "@/components/ui/calendar"
+import { GameCard, type Rarity } from "@/components/game/game-card"
+import { PackCard } from "@/components/game/pack-card"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import type { CardFindAllQuery, CardPayload } from "@/lib/api/db/api.card"
+import type { CardFindAllQuery, CardPayload, CardSortField, CardSortOrder } from "@/lib/api/db/api.card"
 import { cardFindAll } from "@/lib/api/db/api.card"
-import type { AddPackCardsRequestItem, PackConfig } from "@/lib/api/db/api.pack"
+import type { CardTagPayload } from "@/lib/api/db/api.card-tag"
+import { cardTagFindAll } from "@/lib/api/db/api.card-tag"
+import type { AddPackCardsRequestItem, PackConfig, PackPayload } from "@/lib/api/db/api.pack"
 import { packAddCards, packCreateOne } from "@/lib/api/db/api.pack"
 import { RARITIES, RARITY_COLORS } from "@/lib/const/const.rarity"
 import { Admin } from "@/lib/const/const.url"
 import { cn } from "@/lib/utils"
-import { format } from "date-fns"
-import { ArrowLeft, CalendarIcon, ChevronDown, Gift, Loader2, Save, Search, X } from "lucide-react"
+import { ArrowDown01, ArrowDownAZ, ArrowLeft, ArrowUp01, ArrowUpZA, Check, ChevronDown, ChevronsUpDown, Gift, Loader2, Save, Search, Tag, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
@@ -37,13 +39,13 @@ export default function CreatePackPage() {
   const [ saving, setSaving ] = useState(false)
   // Pack fields
   const [ name, setName ] = useState("")
+  const [ code, setCode ] = useState("")
   const [ description, setDescription ] = useState("")
   const [ image, setImage ] = useState("")
+  const [ nameImage, setNameImage ] = useState("")
   const [ customImages, setCustomImages ] = useState<string[]>([])
+  const [ nameImageCustoms, setNameImageCustoms ] = useState<string[]>([])
   const [ cardsPerPull, setCardsPerPull ] = useState(5)
-  const [ isActive, setIsActive ] = useState(false)
-  const [ openAt, setOpenAt ] = useState<Date | undefined>(undefined)
-  const [ closeAt, setCloseAt ] = useState<Date | undefined>(undefined)
   // Config
   const [ rarityRates, setRarityRates ] = useState<Record<string, number>>({ ...DEFAULT_RARITY_RATES })
   const [ pity, setPity ] = useState<Record<string, number>>({})
@@ -54,11 +56,19 @@ export default function CreatePackPage() {
   const [ debouncedCardSearch, setDebouncedCardSearch ] = useState("")
   const [ searchResults, setSearchResults ] = useState<CardPayload[]>([])
   const [ searchLoading, setSearchLoading ] = useState(false)
+  const [ searchTotal, setSearchTotal ] = useState(0)
+  const [ loadingMore, setLoadingMore ] = useState(false)
+  const [ filterRarity, setFilterRarity ] = useState<Rarity | "">("")
+  const [ filterTag, setFilterTag ] = useState("")
+  const [ tags, setTags ] = useState<CardTagPayload[]>([])
+  const [ tagOpen, setTagOpen ] = useState(false)
+  const [ sortField, setSortField ] = useState<CardSortField>("name")
+  const [ sortOrder, setSortOrder ] = useState<CardSortOrder>("asc")
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
   const initialized = useRef(false)
   const [ expandedRarities, setExpandedRarities ] = useState<Set<string>>(new Set(RARITIES))
 
-  // Load cards on mount
+  // Load cards and tags on mount
   useEffect(() => {
     if (initialized.current) return
 
@@ -67,9 +77,15 @@ export default function CreatePackPage() {
     void (async () => {
       setSearchLoading(true)
 
-      const { response } = await cardFindAll({ page: 1, limit: 50 })
+      const [ cardsResult, tagsResult ] = await Promise.all([
+        cardFindAll({ page: 1, limit: 10, sort: sortField, order: sortOrder }),
+        cardTagFindAll({ page: 1, limit: 100 }),
+      ])
+      const cards = cardsResult.response?.payload ?? []
 
-      setSearchResults(response?.payload ?? [])
+      setSearchResults(cards)
+      setSearchTotal(cardsResult.response?.meta?.total ?? cards.length)
+      setTags(tagsResult.response?.payload ?? [])
       setSearchLoading(false)
     })()
   }, [])
@@ -87,23 +103,51 @@ export default function CreatePackPage() {
     }
   }, [ cardSearch ])
 
-  // Fetch search results when search changes
+  function buildCardQuery(page: number): CardFindAllQuery {
+    const query: CardFindAllQuery = { page, limit: 10, sort: sortField, order: sortOrder }
+
+    if (debouncedCardSearch) query.search = debouncedCardSearch
+    if (filterRarity) query.rarity = filterRarity
+    if (filterTag) query.tag_id = filterTag
+
+    return query
+  }
+
+  function toggleSort(field: CardSortField) {
+    if (sortField === field) {
+      setSortOrder((prev) => prev === "asc" ? "desc" : "asc")
+    }
+    else {
+      setSortField(field)
+      setSortOrder("asc")
+    }
+  }
+
+  // Fetch search results when filters change
   useEffect(() => {
     if (!initialized.current) return
 
     void (async () => {
       setSearchLoading(true)
 
-      const query: CardFindAllQuery = { page: 1, limit: 50 }
-
-      if (debouncedCardSearch) query.search = debouncedCardSearch
-
-      const { response } = await cardFindAll(query)
+      const { response } = await cardFindAll(buildCardQuery(1))
 
       setSearchResults(response?.payload ?? [])
+      setSearchTotal(response?.meta?.total ?? response?.payload?.length ?? 0)
       setSearchLoading(false)
     })()
-  }, [ debouncedCardSearch ])
+  }, [ debouncedCardSearch, filterRarity, filterTag, sortField, sortOrder ])
+
+  async function handleLoadMore() {
+    const nextPage = Math.floor(searchResults.length / 10) + 1
+
+    setLoadingMore(true)
+
+    const { response } = await cardFindAll(buildCardQuery(nextPage))
+
+    setSearchResults((prev) => [ ...prev, ...(response?.payload ?? []) ])
+    setLoadingMore(false)
+  }
 
   function updateRate(rarity: string, value: string) {
     const num = parseFloat(value)
@@ -172,8 +216,10 @@ export default function CreatePackPage() {
   }
 
   async function handleSave() {
-    if (!name.trim() || !image) {
-      toast.error(!name.trim() ? "Pack name is required" : "Pack image is required")
+    if (!name.trim() || !code.trim() || !image) {
+      if (!name.trim()) toast.error("Pack name is required")
+      else if (!code.trim()) toast.error("Pack code is required")
+      else toast.error("Pack image is required")
 
       return
     }
@@ -200,12 +246,11 @@ export default function CreatePackPage() {
 
     const { response, status } = await packCreateOne({
       name:           name.trim(),
+      code:           code.trim(),
       description:    description.trim() || undefined,
       image,
+      name_image:     nameImage.trim() || undefined,
       cards_per_pull: cardsPerPull,
-      is_active:      isActive,
-      open_at:        openAt?.toISOString(),
-      close_at:       closeAt?.toISOString(),
       config,
     })
 
@@ -219,8 +264,9 @@ export default function CreatePackPage() {
     // Add selected cards to the newly created pack
     if (selectedCards.size > 0) {
       const cards: AddPackCardsRequestItem[] = Array.from(selectedCards.values()).map((entry) => ({
-        card_id: entry.card.id,
-        weight:  entry.weight,
+        card_id:     entry.card.id,
+        weight:      entry.weight,
+        is_featured: false,
       }))
       const { status: addStatus } = await packAddCards(response.payload.id, { cards })
 
@@ -243,7 +289,7 @@ export default function CreatePackPage() {
         actions={(
           <div className={"flex items-center gap-2"}>
             <GameButton
-              disabled={saving || !name.trim() || !image || selectedCards.size === 0}
+              disabled={saving || !name.trim() || !code.trim() || !image || selectedCards.size === 0}
               variant={"amber"}
               onClick={() => void handleSave()}
             >
@@ -278,153 +324,298 @@ export default function CreatePackPage() {
       />
 
       {/* Settings panel */}
-      <div className={"mt-6 rounded-xl border border-zinc-800/40 bg-zinc-900/60 p-5"}>
-        {/* Active toggle — top right */}
-        <div className={"flex items-center justify-end"}>
-          <div className={"flex items-center gap-2"}>
-            <Switch
-              checked={isActive}
-              className={"data-[state=checked]:bg-emerald-500"}
-              onCheckedChange={setIsActive}
-            />
-
-            <Label className={"text-xs text-zinc-400"}>Active</Label>
-          </div>
-        </div>
-
-        {/* Row 1 — Name + Cards/Pull */}
-        <div className={"mt-3 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_auto]"}>
-          <div className={"space-y-4"}>
-            <div>
-              <Label className={"mb-1 block text-[11px] uppercase tracking-wider text-zinc-500"}>Name</Label>
-
-              <Input
-                className={underlineInput}
-                placeholder={"Pack name..."}
-                type={"text"}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <Label className={"mb-1 block text-[11px] uppercase tracking-wider text-zinc-500"}>Description</Label>
-
-              <Textarea
-                className={"min-h-0 resize-none rounded-none border-x-0 border-t-0 border-b border-zinc-700/60 bg-transparent px-0 pb-1.5 text-sm text-zinc-100 transition-colors placeholder:text-zinc-600 focus:border-amber-500/50 focus-visible:ring-0 focus-visible:ring-offset-0"}
-                placeholder={"Optional description..."}
-                rows={1}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label className={"mb-1 block text-[11px] uppercase tracking-wider text-zinc-500"}>Cards/Pull</Label>
-
-            <Input
-              className={cn(underlineInput, "w-20")}
-              min={1}
-              type={"number"}
-              value={cardsPerPull}
-              onChange={(e) => setCardsPerPull(Math.max(1, parseInt(e.target.value, 10) || 1))}
-            />
-          </div>
-        </div>
-
-        {/* Row 2 — Date pickers */}
-        <div className={"mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4"}>
-          <div>
-            <Label className={"mb-1 block text-[11px] uppercase tracking-wider text-zinc-500"}>Open At</Label>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  className={cn(
-                    "flex h-9 w-full items-center gap-2 rounded-lg border border-zinc-700/60 bg-zinc-800/40 px-3 text-left text-sm transition-colors hover:border-zinc-600",
-                    openAt ? "text-zinc-200" : "text-zinc-600",
-                  )}
-                  type={"button"}
-                >
-                  <CalendarIcon className={"h-3.5 w-3.5 shrink-0 text-zinc-500"} />
-                  {openAt ? format(openAt, "MMM d, yyyy") : "Not set"}
-                </button>
-              </PopoverTrigger>
-
-              <PopoverContent align={"start"} className={"w-auto border-zinc-700 bg-zinc-900 p-0"}>
-                <Calendar
-                  className={"rounded-lg border w-60"}
-                  mode={"single"}
-                  selected={openAt}
-                  onSelect={setOpenAt}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div>
-            <Label className={"mb-1 block text-[11px] uppercase tracking-wider text-zinc-500"}>Close At</Label>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  className={cn(
-                    "flex h-9 w-full items-center gap-2 rounded-lg border border-zinc-700/60 bg-zinc-800/40 px-3 text-left text-sm transition-colors hover:border-zinc-600",
-                    closeAt ? "text-zinc-200" : "text-zinc-600",
-                  )}
-                  type={"button"}
-                >
-                  <CalendarIcon className={"h-3.5 w-3.5 shrink-0 text-zinc-500"} />
-                  {closeAt ? format(closeAt, "MMM d, yyyy") : "Not set"}
-                </button>
-              </PopoverTrigger>
-
-              <PopoverContent align={"start"} className={"w-auto border-zinc-700 bg-zinc-900 p-0"}>
-                <Calendar
-                  className={"rounded-lg border w-60"}
-                  mode={"single"}
-                  selected={closeAt}
-                  onSelect={setCloseAt}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-
-        {/* Row 3 — Image */}
-        <div className={"mt-5"}>
-          <Label className={"mb-2 block text-[11px] uppercase tracking-wider text-zinc-500"}>Image</Label>
-
-          <ImagePicker
-            customImages={customImages}
-            defaultImage={""}
-            pictures={[]}
-            selected={image}
-            onCustomImageAdd={(url) => setCustomImages((prev) => [ ...prev, url ])}
-            onSelect={setImage}
+      <div className={"mt-6 flex gap-8"}>
+        {/* Preview */}
+        <div className={"w-48 shrink-0"}>
+          <PackCard
+            pack={{
+              id:             "00000000-0000-0000-0000-000000000000",
+              code:           code || "CODE",
+              name:           name || "Pack Name",
+              description:    description || null,
+              image:          image || "/placeholder.png",
+              name_image:     nameImage || null,
+              cards_per_pull: cardsPerPull,
+              sort_order:     0,
+              config:         { rarity_rates: rarityRates },
+              pool_id:        "",
+              rotation_order: null,
+              total_cards:    selectedCards.size,
+            } satisfies PackPayload}
+            tiltEnabled={false}
           />
         </div>
 
+        {/* Form */}
+        <div className={"min-w-0 flex-1 rounded-xl border border-zinc-800/40 bg-zinc-900/60 p-5"}>
+          {/* Row 1 — Name, Code + Cards/Pull */}
+          <div className={"grid grid-cols-1 gap-6 lg:grid-cols-[1fr_auto]"}>
+            <div className={"space-y-4"}>
+              <div>
+                <Label className={"mb-1 block text-[11px] uppercase tracking-wider text-zinc-500"}>Name</Label>
+
+                <Input
+                  className={underlineInput}
+                  placeholder={"Pack name..."}
+                  type={"text"}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label className={"mb-1 block text-[11px] uppercase tracking-wider text-zinc-500"}>Code</Label>
+
+                <Input
+                  className={underlineInput}
+                  placeholder={"Pack slug..."}
+                  type={"text"}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label className={"mb-1 block text-[11px] uppercase tracking-wider text-zinc-500"}>Description</Label>
+
+                <Textarea
+                  className={"min-h-0 resize-none rounded-none border-x-0 border-t-0 border-b border-zinc-700/60 bg-transparent px-0 pb-1.5 text-sm text-zinc-100 transition-colors placeholder:text-zinc-600 focus:border-amber-500/50 focus-visible:ring-0 focus-visible:ring-offset-0"}
+                  placeholder={"Optional description..."}
+                  rows={1}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className={"mb-1 block text-[11px] uppercase tracking-wider text-zinc-500"}>Cards/Pull</Label>
+
+              <Input
+                className={cn(underlineInput, "w-20")}
+                min={1}
+                type={"number"}
+                value={cardsPerPull}
+                onChange={(e) => setCardsPerPull(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              />
+            </div>
+          </div>
+
+          {/* Row 2 — Name Image */}
+          <div className={"mt-5"}>
+            <Label className={"mb-2 block text-[11px] uppercase tracking-wider text-zinc-500"}>Name Image</Label>
+
+            <ImagePicker
+              customImages={nameImageCustoms}
+              defaultImage={""}
+              pictures={[]}
+              selected={nameImage}
+              onCustomImageAdd={(url) => setNameImageCustoms((prev) => [ ...prev, url ])}
+              onSelect={setNameImage}
+            />
+
+            <p className={"mt-1 text-[10px] text-zinc-600"}>
+              Optional image displayed as the pack name. Leave empty to use text.
+            </p>
+          </div>
+
+          {/* Row 4 — Image */}
+          <div className={"mt-5"}>
+            <Label className={"mb-2 block text-[11px] uppercase tracking-wider text-zinc-500"}>Image</Label>
+
+            <ImagePicker
+              customImages={customImages}
+              defaultImage={""}
+              pictures={[]}
+              selected={image}
+              onCustomImageAdd={(url) => setCustomImages((prev) => [ ...prev, url ])}
+              onSelect={setImage}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Card selector — full width */}
       <div className={"mt-6"}>
-        <div className={"mb-3 flex items-center gap-3"}>
-          <h2 className={"text-sm font-semibold uppercase tracking-wider text-zinc-500"}>
-            Browse Cards
-          </h2>
+        <h2 className={"mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500"}>
+          Browse Cards
+        </h2>
 
-          <div className={"relative flex-1 max-w-sm"}>
+        <div className={"space-y-3 pb-3"}>
+          <div className={"relative max-w-sm"}>
             <Search className={"absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"} />
 
             <Input
-              className={"h-9 rounded-lg border border-zinc-700/60 bg-zinc-800/40 pl-9 pr-3 text-sm text-zinc-100 transition-colors placeholder:text-zinc-600 focus:border-amber-500/50 focus-visible:ring-0 focus-visible:ring-offset-0"}
+              className={"h-9 rounded-lg border border-zinc-700/60 bg-zinc-800/40 pl-9 pr-9 text-sm text-zinc-100 transition-colors placeholder:text-zinc-600 focus:border-amber-500/50 focus-visible:ring-0 focus-visible:ring-offset-0"}
               placeholder={"Search cards..."}
               type={"text"}
               value={cardSearch}
               onChange={(e) => setCardSearch(e.target.value)}
             />
+
+            {cardSearch && (
+              <button
+                className={"absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 transition-colors hover:text-zinc-300"}
+                type={"button"}
+                onClick={() => setCardSearch("")}
+              >
+                <X className={"h-3.5 w-3.5"} />
+              </button>
+            )}
+          </div>
+
+          {/* Tag filter */}
+          {tags.length > 0 && (
+            <Popover open={tagOpen} onOpenChange={setTagOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  className={cn(
+                    "flex w-full max-w-sm items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
+                    filterTag
+                      ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300"
+                      : "border-zinc-700/60 bg-zinc-800/40 text-zinc-500",
+                  )}
+                  type={"button"}
+                >
+                  <Tag className={"h-4 w-4 shrink-0"} />
+                  {tags.find((t) => t.id === filterTag)?.name ?? "All Tags"}
+                  <ChevronsUpDown className={"ml-auto h-3.5 w-3.5 text-zinc-500"} />
+
+                  {filterTag && (
+                    <button
+                      className={"text-zinc-400 transition-colors hover:text-zinc-200"}
+                      type={"button"}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setFilterTag("")
+                      }}
+                    >
+                      <X className={"h-3.5 w-3.5"} />
+                    </button>
+                  )}
+                </button>
+              </PopoverTrigger>
+
+              <PopoverContent align={"start"} className={"p-0"} style={{ width: "var(--radix-popover-trigger-width)" }}>
+                <Command>
+                  <CommandInput placeholder={"Search tags..."} />
+
+                  <CommandList>
+                    <CommandEmpty>No tags found.</CommandEmpty>
+
+                    <CommandGroup>
+                      <CommandItem
+                        value={"__all__"}
+                        onSelect={() => {
+                          setFilterTag("")
+                          setTagOpen(false)
+                        }}
+                      >
+                        <Check className={cn("mr-2 h-3.5 w-3.5", !filterTag ? "opacity-100" : "opacity-0")} />
+                        All Tags
+                      </CommandItem>
+
+                      {tags.map((tag) => (
+                        <CommandItem
+                          key={tag.id}
+                          value={tag.name}
+                          onSelect={() => {
+                            setFilterTag(filterTag === tag.id ? "" : tag.id)
+                            setTagOpen(false)
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-3.5 w-3.5", filterTag === tag.id ? "opacity-100" : "opacity-0")} />
+                          {tag.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          )}
+
+          {/* Rarity filter pills + Sort controls */}
+          <div className={"flex flex-wrap items-center gap-4"}>
+            {/* Rarity pills */}
+            <div className={"flex items-center gap-1.5"}>
+              <span className={"text-[11px] uppercase tracking-wider text-zinc-500"}>Rarity</span>
+
+              <GameButton
+                className={"!px-2.5 !py-1 !text-xs !font-semibold"}
+                pressed={filterRarity === ""}
+                variant={"ghost"}
+                onClick={() => setFilterRarity("")}
+              >
+                All
+              </GameButton>
+
+              {RARITIES.map((r) => {
+                const colors = RARITY_COLORS[r]
+                const isActive = filterRarity === r
+
+                return (
+                  <GameButton
+                    className={cn(
+                      "!px-2.5 !py-1 !text-xs !font-semibold",
+                      isActive
+                        ? cn(colors.bg, colors.text)
+                        : cn("!bg-zinc-800/60 !text-zinc-500", colors.shadow, colors.hoverShadow),
+                    )}
+                    key={r}
+                    pressed={isActive}
+                    variant={"ghost"}
+                    onClick={() => setFilterRarity(r)}
+                  >
+                    {colors.label}
+                  </GameButton>
+                )
+              })}
+            </div>
+
+            {/* Divider */}
+            <div className={"h-5 w-px bg-zinc-700/50"} />
+
+            {/* Sort controls */}
+            <div className={"flex items-center gap-1.5"}>
+              <span className={"text-[11px] uppercase tracking-wider text-zinc-500"}>Sort</span>
+
+              <GameButton
+                className={"!px-2.5 !py-1 !text-xs !font-semibold"}
+                pressed={sortField === "name"}
+                variant={"ghost"}
+                onClick={() => toggleSort("name")}
+              >
+                {sortField === "name" && sortOrder === "desc"
+                  ? <ArrowUpZA className={"h-3.5 w-3.5"} />
+                  : <ArrowDownAZ className={"h-3.5 w-3.5"} />}
+                Name
+              </GameButton>
+
+              <GameButton
+                className={"!px-2.5 !py-1 !text-xs !font-semibold"}
+                pressed={sortField === "rarity"}
+                variant={"ghost"}
+                onClick={() => toggleSort("rarity")}
+              >
+                {sortField === "rarity" && sortOrder === "desc"
+                  ? <ArrowUpZA className={"h-3.5 w-3.5"} />
+                  : <ArrowDownAZ className={"h-3.5 w-3.5"} />}
+                Rarity
+              </GameButton>
+
+              <GameButton
+                className={"!px-2.5 !py-1 !text-xs !font-semibold"}
+                pressed={sortField === "favorite"}
+                variant={"ghost"}
+                onClick={() => toggleSort("favorite")}
+              >
+                {sortField === "favorite" && sortOrder === "desc"
+                  ? <ArrowUp01 className={"h-3.5 w-3.5"} />
+                  : <ArrowDown01 className={"h-3.5 w-3.5"} />}
+                Favorite
+              </GameButton>
+            </div>
           </div>
         </div>
 
@@ -442,37 +633,54 @@ export default function CreatePackPage() {
               </div>
             )
             : (
-              <div className={"grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-3"}>
-                {searchResults.map((card) => {
-                  const isSelected = selectedCardIds.has(card.id)
+              <>
+                <div className={"grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4"}>
+                  {searchResults.map((card) => {
+                    const isSelected = selectedCardIds.has(card.id)
 
-                  return (
-                    <button
-                      className={"relative text-left"}
-                      key={card.id}
-                      type={"button"}
-                      onClick={() => toggleCard(card)}
-                    >
-                      <GameCard
-                        static
-                        anime={card.anime?.title}
-                        className={cn("!w-full transition-opacity", isSelected && "opacity-40")}
-                        image={card.image}
-                        name={card.name}
-                        rarity={card.rarity}
-                      />
-
-                      {isSelected && (
-                        <div className={"absolute inset-0 flex items-center justify-center"}>
-                          <span className={"rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400"}>
-                            Selected
-                          </span>
+                    return (
+                      <button
+                        className={"relative text-left"}
+                        key={card.id}
+                        type={"button"}
+                        onClick={() => toggleCard(card)}
+                      >
+                        <div className={cn("transition-opacity", isSelected && "opacity-40")}>
+                          <GameCard
+                            static
+                            anime={card.anime?.title}
+                            className={"!w-full"}
+                            image={card.image}
+                            name={card.name}
+                            rarity={card.rarity}
+                          />
                         </div>
-                      )}
+
+                        {isSelected && (
+                          <div className={"absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 shadow-lg"}>
+                            <Check className={"h-3 w-3 text-white"} strokeWidth={3} />
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {searchResults.length < searchTotal && (
+                  <div className={"mt-3 flex items-center justify-center gap-2"}>
+                    <button
+                      className={"text-xs text-zinc-500 transition-colors hover:text-zinc-300"}
+                      disabled={loadingMore}
+                      type={"button"}
+                      onClick={() => void handleLoadMore()}
+                    >
+                      {loadingMore
+                        ? <Loader2 className={"inline h-3 w-3 animate-spin"} />
+                        : `Load more (${searchResults.length} of ${searchTotal})`}
                     </button>
-                  )
-                })}
-              </div>
+                  </div>
+                )}
+              </>
             )}
       </div>
 
@@ -572,7 +780,7 @@ export default function CreatePackPage() {
                       </div>
 
                       {/* Cards grid with weight inputs */}
-                      <div className={"grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-3"}>
+                      <div className={"grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4"}>
                         {entries.map((entry) => (
                           <div key={entry.card.id}>
                             <div className={"relative"}>
@@ -585,13 +793,13 @@ export default function CreatePackPage() {
                                 rarity={entry.card.rarity}
                               />
 
-                              {/* Hover remove */}
+                              {/* Remove button */}
                               <button
-                                className={"absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 transition-opacity hover:opacity-100"}
+                                className={"absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 shadow-lg transition-opacity hover:bg-red-600"}
                                 type={"button"}
                                 onClick={() => removeCard(entry.card.id)}
                               >
-                                <X className={"h-5 w-5 text-red-400"} />
+                                <X className={"h-3 w-3 text-white"} strokeWidth={3} />
                               </button>
                             </div>
 

@@ -29,6 +29,11 @@ export const Admin = {
     Create: "/admin/packs/create",
     Edit:   (id: string) => `/admin/packs/${id}/edit` as const,
   },
+  Pools: {
+    List:   "/admin/pools",
+    Create: "/admin/pools/create",
+    Edit:   (id: string) => `/admin/pools/${id}/edit` as const,
+  },
 } as const
 
 export const Route = {

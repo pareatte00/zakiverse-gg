@@ -73,6 +73,7 @@ const KEYFRAMES = `
 `
 
 interface PackCardProps {
+  actions?:        React.ReactNode
   highestRarity?:  Rarity | null
   isTearing?:      boolean
   onClick?:        () => void
@@ -385,7 +386,7 @@ function SealedTopEdge({ highestRarity, isTearing, onTearComplete }: SealedTopEd
   )
 }
 
-export function PackCard({ highestRarity, isTearing = false, onClick, onInfo, onTearComplete, pack, tiltEnabled = true }: PackCardProps) {
+export function PackCard({ actions, highestRarity, isTearing = false, onClick, onInfo, onTearComplete, pack, tiltEnabled = true }: PackCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const holoRef = useRef<HTMLDivElement>(null)
   const streakRef = useRef<HTMLDivElement>(null)
@@ -768,6 +769,15 @@ export function PackCard({ highestRarity, isTearing = false, onClick, onInfo, on
               />
             ))}
           </div>
+
+          {/* Actions overlay */}
+          {actions && (
+            <div className={"pointer-events-none absolute inset-0 z-20 opacity-0 transition-opacity [*:hover>&]:pointer-events-auto [*:hover>&]:opacity-100"}>
+              <div className={"absolute right-[4cqw] top-[4cqw] flex flex-col gap-[2cqw]"}>
+                {actions}
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

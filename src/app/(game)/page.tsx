@@ -11,14 +11,11 @@ const DEMO_PACK: PackPayload = {
   description:    null,
   image:          "https://images4.alphacoders.com/125/1258153.jpg",
   name_image:     null,
-  type:           "standard",
   cards_per_pull: 5,
   sort_order:     0,
-  is_active:      true,
-  open_at:        null,
-  close_at:       null,
   config:         { rarity_rates: { common: 60, rare: 25, epic: 10, legendary: 4, prismatic: 1 }},
-  pool_id:        null,
+  pool_id:        "demo-pool",
+  rotation_order: null,
   total_cards:    50,
 }
 const DEMO_CARD = {

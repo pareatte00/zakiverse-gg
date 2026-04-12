@@ -17,8 +17,8 @@ import type { PackPayload, PullMode } from "@/lib/api/db/api.pack"
 import { packFindAll, packFindOneById } from "@/lib/api/db/api.pack"
 import { RARITY_COLORS } from "@/lib/const/const.rarity"
 import { useGameSound } from "@/lib/hook/use-game-sound"
-import { Calendar, Clock, Gift, Layers, Loader2, Package, Sparkles } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Gift, Layers, Loader2, Package, Sparkles } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 const RARITY_DOT_COLORS: Record<string, string> = {
   common:    "bg-stone-500",
@@ -55,15 +55,14 @@ export default function PacksPage() {
     initialized.current = true
 
     void (async () => {
-      const { response } = await packFindAll({ active_only: true, page: 1, limit: 20 })
+      const { response } = await packFindAll({ page: 1, limit: 20 })
 
       setPacks(response?.payload ?? [])
       setLoading(false)
     })()
   }, [])
 
-  const limitedPacks = useMemo(() => packs.filter((p) => p.close_at), [ packs ])
-  const standardPacks = useMemo(() => packs.filter((p) => !p.close_at), [ packs ])
+  const standardPacks = packs
   const { play } = useGameSound()
   const handleInspect = useCallback((pack: PackPayload) => {
     play("pack-select")
@@ -131,18 +130,6 @@ export default function PacksPage() {
   return (
     <>
       <div className={"space-y-6 py-4"}>
-        {/* Limited Time Packs */}
-        {limitedPacks.length > 0 && (
-          <PackSection
-            icon={<Clock className={"h-4 w-4 text-rose-400"} />}
-            label={"Limited Time"}
-            labelClass={"text-rose-400"}
-            packs={limitedPacks}
-            onInfo={handleInfo}
-            onPackClick={handleInspect}
-          />
-        )}
-
         {/* Standard Packs */}
         {standardPacks.length > 0 && (
           <PackSection
@@ -291,16 +278,6 @@ export default function PacksPage() {
                             </div>
                           )
                         })}
-                    </div>
-                  )}
-
-                  {/* Availability dates */}
-                  {(infoPack.open_at || infoPack.close_at) && (
-                    <div className={"flex items-center gap-2 text-xs text-stone-500"}>
-                      <Calendar className={"h-3.5 w-3.5"} />
-                      {infoPack.open_at && <span>Opens {new Date(infoPack.open_at).toLocaleDateString()}</span>}
-                      {infoPack.open_at && infoPack.close_at && <span>·</span>}
-                      {infoPack.close_at && <span>Closes {new Date(infoPack.close_at).toLocaleDateString()}</span>}
                     </div>
                   )}
 

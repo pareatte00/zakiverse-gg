@@ -37,7 +37,7 @@ export interface PackPayload {
   cards_per_pull: number
   sort_order:     number
   config:         PackConfig
-  pool_id:        string
+  pool_id:        string | null
   rotation_order: number | null
   total_cards:    number
   cards?:         PackCardPayload[]
@@ -52,7 +52,7 @@ export interface CreatePackRequest {
   cards_per_pull:  number
   sort_order?:     number
   config:          PackConfig
-  pool_id:         string
+  pool_id?:        string
   rotation_order?: number
 }
 
@@ -65,12 +65,14 @@ export interface UpdatePackRequest {
   cards_per_pull?: number
   sort_order?:     number
   config?:         PackConfig
+  pool_id?:        string
   rotation_order?: number
 }
 
 export interface PackFindAllQuery {
-  page:  number
-  limit: number
+  page:    number
+  limit:   number
+  search?: string
 }
 
 export interface AddPackCardsRequestItem {
