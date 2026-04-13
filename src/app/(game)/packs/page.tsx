@@ -14,11 +14,13 @@ import {
 } from "@/components/ui/carousel"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import type { PackPayload, PullMode } from "@/lib/api/db/api.pack"
-import { packFindAll, packFindOneById } from "@/lib/api/db/api.pack"
+import { packFindOneById } from "@/lib/api/db/api.pack"
+import type { BannerType, PackPoolPayload } from "@/lib/api/db/api.pack-pool"
+import { packPoolFindActiveBanners } from "@/lib/api/db/api.pack-pool"
 import { RARITY_COLORS } from "@/lib/const/const.rarity"
 import { useGameSound } from "@/lib/hook/use-game-sound"
-import { Gift, Layers, Loader2, Package, Sparkles } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { Clock, Gift, Layers, Loader2, Package, Sparkles, Star } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 const RARITY_DOT_COLORS: Record<string, string> = {
   common:    "bg-stone-500",
@@ -27,15 +29,66 @@ const RARITY_DOT_COLORS: Record<string, string> = {
   legendary: "bg-amber-500",
   prismatic: "bg-cyan-400",
 }
+const BANNER_ORDER: BannerType[] = [ "featured", "standard" ]
+const BANNER_CONFIG: Record<BannerType, { label: string, icon: React.ReactNode, color: string }> = {
+  featured: { label: "Featured", icon: <Star className={"h-4 w-4"} />, color: "text-amber-400" },
+  standard: { label: "Standard", icon: <Package className={"h-4 w-4"} />, color: "text-stone-400" },
+}
+
+/* ── Countdown ── */
+
+function formatCountdown(targetDate: string): string | null {
+  const diff = new Date(targetDate).getTime() - Date.now()
+
+  if (diff <= 0) return null
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`
+
+  return `${minutes}m ${seconds}s`
+}
+
+function Countdown({ targetDate, label }: { targetDate: string, label: string }) {
+  const [ text, setText ] = useState<string | null>(() => formatCountdown(targetDate))
+
+  useEffect(() => {
+    const update = () => setText(formatCountdown(targetDate))
+
+    update()
+
+    const id = setInterval(update, 1000)
+
+    return () => clearInterval(id)
+  }, [ targetDate ])
+
+  if (!text) return null
+
+  return (
+    <span className={"flex items-center gap-1 text-[11px] text-stone-500"}>
+      <Clock className={"h-3 w-3"} />
+      {label}
+      {" "}
+      {text}
+    </span>
+  )
+}
+
+/* ── Main Page ── */
 
 export default function PacksPage() {
-  const [ packs, setPacks ] = useState<PackPayload[]>([])
+  const [ banners, setBanners ] = useState<PackPoolPayload[]>([])
   const [ loading, setLoading ] = useState(true)
   const initialized = useRef(false)
   const { state, startRevealing, tapReveal, close } = usePackOpening()
   const [ inspectPack, setInspectPack ] = useState<PackPayload | null>(null)
   const [ infoPack, setInfoPack ] = useState<PackPayload | null>(null)
   const [ infoLoading, setInfoLoading ] = useState(false)
+  const { play } = useGameSound()
   const handleInfo = useCallback(async (pack: PackPayload) => {
     setInfoPack(pack)
     setInfoLoading(true)
@@ -48,6 +101,10 @@ export default function PacksPage() {
 
     setInfoLoading(false)
   }, [])
+  const handleInspect = useCallback((pack: PackPayload) => {
+    play("pack-select")
+    setInspectPack(pack)
+  }, [ play ])
 
   useEffect(() => {
     if (initialized.current) return
@@ -55,19 +112,26 @@ export default function PacksPage() {
     initialized.current = true
 
     void (async () => {
-      const { response } = await packFindAll({ page: 1, limit: 20 })
+      const { response } = await packPoolFindActiveBanners()
 
-      setPacks(response?.payload ?? [])
+      setBanners(response?.payload ?? [])
       setLoading(false)
     })()
   }, [])
 
-  const standardPacks = packs
-  const { play } = useGameSound()
-  const handleInspect = useCallback((pack: PackPayload) => {
-    play("pack-select")
-    setInspectPack(pack)
-  }, [ play ])
+  const grouped = useMemo(() => {
+    const map: Record<BannerType, PackPoolPayload[]> = {
+      featured: [],
+      standard: [],
+    }
+
+    for (const banner of banners) {
+      map[banner.banner_type].push(banner)
+    }
+
+    return map
+  }, [ banners ])
+  const hasPacks = banners.some((b) => (b.packs?.length ?? 0) > 0)
   const lastOpenedPackRef = useRef<PackPayload | null>(null)
   const [ returningFromOpen, setReturningFromOpen ] = useState(false)
   const handleInspectComplete = useCallback((mode: PullMode, cards: EnrichedPulledCard[]) => {
@@ -80,8 +144,6 @@ export default function PacksPage() {
   const handleClose = useCallback(() => {
     close()
 
-    // Go back to the peek 1/10 inspect overlay for the same pack
-    // Delay so the opening overlay exit animation (0.3s) finishes first
     if (lastOpenedPackRef.current) {
       const pack = lastOpenedPackRef.current
 
@@ -117,7 +179,7 @@ export default function PacksPage() {
     )
   }
 
-  if (packs.length === 0) {
+  if (!hasPacks) {
     return (
       <div className={"flex flex-col items-center justify-center py-20"}>
         <Gift className={"h-10 w-10 text-stone-700"} />
@@ -130,18 +192,33 @@ export default function PacksPage() {
   return (
     <>
       <div className={"space-y-6 py-4"}>
-        {/* Standard Packs */}
-        {standardPacks.length > 0 && (
-          <PackSection
-            icon={<Package className={"h-4 w-4 text-stone-400"} />}
-            label={"Standard"}
-            labelClass={"text-stone-400"}
-            packs={standardPacks}
-            onInfo={handleInfo}
-            onPackClick={handleInspect}
-          />
-        )}
+        {BANNER_ORDER.map((type) => {
+          const pools = grouped[type]
 
+          if (pools.length === 0) return null
+
+          const config = BANNER_CONFIG[type]
+
+          return (
+            <section key={type}>
+              <div className={"flex items-center gap-2 px-4"}>
+                <span className={config.color}>{config.icon}</span>
+                <h2 className={`text-sm font-bold uppercase tracking-wider ${config.color}`}>{config.label}</h2>
+              </div>
+
+              <div className={"space-y-4 pt-2"}>
+                {pools.map((pool) => (
+                  <PoolSection
+                    key={pool.id}
+                    pool={pool}
+                    onInfo={handleInfo}
+                    onPackClick={handleInspect}
+                  />
+                ))}
+              </div>
+            </section>
+          )
+        })}
       </div>
 
       {state.phase === "idle" && inspectPack && (
@@ -291,24 +368,30 @@ export default function PacksPage() {
   )
 }
 
-/* ── Pack carousel section ── */
+/* ── Pool section with countdown ── */
 
-interface PackSectionProps {
-  label:       string
-  labelClass:  string
-  icon:        React.ReactNode
-  packs:       PackPayload[]
+interface PoolSectionProps {
+  pool:        PackPoolPayload
   onPackClick: (pack: PackPayload) => void
   onInfo:      (pack: PackPayload) => void
 }
 
-function PackSection({ label, labelClass, icon, packs, onPackClick, onInfo }: PackSectionProps) {
+function PoolSection({ pool, onPackClick, onInfo }: PoolSectionProps) {
+  const packs = pool.packs ?? []
+
+  if (packs.length === 0) return null
+
+  const countdownTarget = pool.rotation_type !== "none" ? pool.next_rotation_at : pool.close_at
+  const countdownLabel = pool.rotation_type !== "none" ? "Next rotation in" : "Banner ends in"
+
   return (
-    <section>
-      <div className={"flex items-center gap-2 px-4"}>
-        {icon}
-        <h2 className={`text-sm font-bold uppercase tracking-wider ${labelClass}`}>{label}</h2>
-        <span className={"text-xs text-stone-600"}>({packs.length})</span>
+    <div>
+      <div className={"flex items-center gap-2 px-6"}>
+        <span className={"text-xs text-stone-400"}>{pool.name}</span>
+
+        {countdownTarget && (
+          <Countdown label={countdownLabel} targetDate={countdownTarget} />
+        )}
       </div>
 
       <Carousel
@@ -318,18 +401,18 @@ function PackSection({ label, labelClass, icon, packs, onPackClick, onInfo }: Pa
           align:    "center",
         }}
       >
-        <CarouselContent className={"ml-2 pt-4"}>
+        <CarouselContent className={"ml-2 pt-2"}>
           {packs.map((pack) => (
             <CarouselItem className={"basis-[280px] pl-2"} key={pack.id}>
               <PackCard
-                pack={pack}
-                onClick={() => onPackClick(pack)}
-                onInfo={() => onInfo(pack)}
+                pack={pack as PackPayload}
+                onClick={() => onPackClick(pack as PackPayload)}
+                onInfo={() => onInfo(pack as PackPayload)}
               />
             </CarouselItem>
           ))}
         </CarouselContent>
       </Carousel>
-    </section>
+    </div>
   )
 }

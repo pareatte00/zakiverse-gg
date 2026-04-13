@@ -70,9 +70,10 @@ export interface UpdatePackRequest {
 }
 
 export interface PackFindAllQuery {
-  page:    number
-  limit:   number
-  search?: string
+  page:        number
+  limit:       number
+  search?:     string
+  unassigned?: boolean
 }
 
 export interface AddPackCardsRequestItem {
@@ -129,7 +130,7 @@ export async function packFindAll(query: PackFindAllQuery) {
 
   return await api.get<HttpResponse<PackPayload[]>>({
     url:         "/v1/pack",
-    params:      query,
+    data:        query,
     bearerToken: token,
     serviceKey:  Env.systemServiceKey,
   })
@@ -227,7 +228,7 @@ export async function packGetPullHistory(id: string, query: PaginationQuery) {
 
   return await api.get<HttpResponse<PullHistoryPayload[]>>({
     url:         `/v1/pack/${id}/history`,
-    params:      query,
+    data:        query,
     bearerToken: token,
     serviceKey:  Env.systemServiceKey,
   })

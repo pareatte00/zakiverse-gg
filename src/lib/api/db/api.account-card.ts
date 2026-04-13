@@ -32,7 +32,7 @@ export async function accountCardFindMyCards(query: PaginationQuery) {
 
   return await api.get<HttpResponse<AccountCardPayload[]>>({
     url:         "/v1/account-card/me",
-    params:      query,
+    data:        query,
     bearerToken: token,
     serviceKey:  Env.systemServiceKey,
   })

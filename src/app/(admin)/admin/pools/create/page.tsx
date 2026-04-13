@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import type { PackPayload } from "@/lib/api/db/api.pack"
 import { packFindAll } from "@/lib/api/db/api.pack"
 import type { BannerType, RotationOrderMode, RotationType } from "@/lib/api/db/api.pack-pool"
-import { packPoolCreateOne } from "@/lib/api/db/api.pack-pool"
+import { packPoolAssignPacks, packPoolCreateOne, packPoolSortRotation } from "@/lib/api/db/api.pack-pool"
 import { Admin } from "@/lib/const/const.url"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
@@ -33,9 +33,6 @@ const sectionCard = "rounded-xl border border-zinc-800/40 bg-zinc-900/60 p-5"
 const BANNER_OPTIONS: { value: BannerType, label: string, selectedClassName?: string }[] = [
   { value: "standard", label: "Standard", selectedClassName: "!bg-zinc-600/20 !text-zinc-300 !border-zinc-600/50" },
   { value: "featured", label: "Featured", selectedClassName: "!bg-amber-500/15 !text-amber-400 !border-amber-500/30" },
-  { value: "event", label: "Event", selectedClassName: "!bg-purple-500/15 !text-purple-400 !border-purple-500/30" },
-  { value: "beginner", label: "Beginner", selectedClassName: "!bg-emerald-500/15 !text-emerald-400 !border-emerald-500/30" },
-  { value: "seasonal", label: "Seasonal", selectedClassName: "!bg-sky-500/15 !text-sky-400 !border-sky-500/30" },
 ]
 const ROTATION_OPTIONS: { value: RotationType, label: string, selectedClassName?: string }[] = [
   { value: "none", label: "None" },
@@ -117,7 +114,7 @@ export default function CreatePoolPage() {
   const fetchPacks = useCallback(async (search: string) => {
     setPacksLoading(true)
 
-    const { response, status } = await packFindAll({ page: 1, limit: 10, search: search || undefined })
+    const { response, status } = await packFindAll({ page: 1, limit: 10, search: search || undefined, unassigned: true })
 
     if (status >= 400) {
       toast.error("Failed to load packs")
@@ -151,7 +148,10 @@ export default function CreatePoolPage() {
     setSaving(true)
 
     const utcHour = rotationType !== "none" ? localHourToUtc(rotationHour, timezone) : rotationHour
-    const { status } = await packPoolCreateOne({
+    const packIds = rotationOrderMode === "manual"
+      ? rotationGroups.flat()
+      : Array.from(selectedPackIds)
+    const { status, response } = await packPoolCreateOne({
       name:                name.trim(),
       description:         description.trim() || undefined,
       image:               image || undefined,
@@ -163,24 +163,34 @@ export default function CreatePoolPage() {
       active_count:        activeCount,
       rotation_type:       rotationType,
       rotation_day:        rotationType !== "none" ? rotationDay : undefined,
-      rotation_interval:   rotationType === "weekly" ? rotationInterval : undefined,
+      rotation_interval:   rotationType === "weekly" ? rotationInterval : 1,
       rotation_hour:       rotationType !== "none" ? utcHour : undefined,
       rotation_order_mode: rotationOrderMode,
       preview_days:        previewDays || undefined,
-      pack_ids:            rotationOrderMode === "manual"
-        ? rotationGroups.flat().length > 0 ? rotationGroups.flat() : undefined
-        : selectedPackIds.size > 0 ? Array.from(selectedPackIds) : undefined,
     })
 
-    setSaving(false)
-
-    if (status < 400) {
-      toast.success("Pool created")
-      router.push(Admin.Pools.List)
-    }
-    else {
+    if (status >= 400 || !response?.payload) {
+      setSaving(false)
       toast.error("Failed to create pool")
+
+      return
     }
+
+    const newPoolId = response.payload.id
+
+    // Assign selected packs to the new pool
+    if (packIds.length > 0) {
+      await packPoolAssignPacks(newPoolId, { ids: packIds })
+    }
+
+    // Sort rotation order for manual mode
+    if (rotationOrderMode === "manual" && packIds.length > 0) {
+      await packPoolSortRotation(newPoolId, { ids: packIds })
+    }
+
+    setSaving(false)
+    toast.success("Pool created")
+    router.push(Admin.Pools.List)
   }
 
   function togglePack(packId: string) {

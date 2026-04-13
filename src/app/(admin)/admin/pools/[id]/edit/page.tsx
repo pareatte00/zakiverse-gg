@@ -14,8 +14,8 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import type { PackPayload } from "@/lib/api/db/api.pack"
 import { packFindAll } from "@/lib/api/db/api.pack"
-import type { BannerType, RotationOrderMode, RotationType } from "@/lib/api/db/api.pack-pool"
-import { packPoolFindOneWithPacks, packPoolSortRotation, packPoolUpdateOneById } from "@/lib/api/db/api.pack-pool"
+import type { BannerType, PackPoolPackItem, RotationOrderMode, RotationType } from "@/lib/api/db/api.pack-pool"
+import { packPoolAssignPacks, packPoolFindOneById, packPoolSortRotation, packPoolUpdateOneById } from "@/lib/api/db/api.pack-pool"
 import { Admin } from "@/lib/const/const.url"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
@@ -33,9 +33,6 @@ const sectionCard = "rounded-xl border border-zinc-800/40 bg-zinc-900/60 p-5"
 const BANNER_OPTIONS: { value: BannerType, label: string, selectedClassName?: string }[] = [
   { value: "standard", label: "Standard", selectedClassName: "!bg-zinc-600/20 !text-zinc-300 !border-zinc-600/50" },
   { value: "featured", label: "Featured", selectedClassName: "!bg-amber-500/15 !text-amber-400 !border-amber-500/30" },
-  { value: "event", label: "Event", selectedClassName: "!bg-purple-500/15 !text-purple-400 !border-purple-500/30" },
-  { value: "beginner", label: "Beginner", selectedClassName: "!bg-emerald-500/15 !text-emerald-400 !border-emerald-500/30" },
-  { value: "seasonal", label: "Seasonal", selectedClassName: "!bg-sky-500/15 !text-sky-400 !border-sky-500/30" },
 ]
 const ROTATION_OPTIONS: { value: RotationType, label: string, selectedClassName?: string }[] = [
   { value: "none", label: "None" },
@@ -127,7 +124,8 @@ export default function EditPoolPage() {
   const [ rotationOrderMode, setRotationOrderMode ] = useState<RotationOrderMode>("auto")
   const [ activeCount, setActiveCount ] = useState(1)
   const [ rotationGroups, setRotationGroups ] = useState<string[][]>([ [] ])
-  const [ poolPacks, setPoolPacks ] = useState<import("@/lib/api/db/api.pack-pool").PackPoolPackItem[]>([])
+  const [ poolPacks, setPoolPacks ] = useState<PackPoolPackItem[]>([])
+  const poolPacksRef = useRef<PackPoolPackItem[]>([])
   const [ allPacks, setAllPacks ] = useState<PackPayload[]>([])
   const [ selectedPackIds, setSelectedPackIds ] = useState<Set<string>>(new Set())
   const [ packsLoading, setPacksLoading ] = useState(true)
@@ -136,13 +134,25 @@ export default function EditPoolPage() {
   const fetchPacks = useCallback(async (search: string) => {
     setPacksLoading(true)
 
-    const { response, status } = await packFindAll({ page: 1, limit: 10, search: search || undefined })
+    const { response, status } = await packFindAll({ page: 1, limit: 10, search: search || undefined, unassigned: true })
 
     if (status >= 400) {
       toast.error("Failed to load packs")
     }
 
-    setAllPacks(response?.payload ?? [])
+    // Merge: pool's own packs (filtered by search) + unassigned packs
+    const unassigned = response?.payload ?? []
+    const current = poolPacksRef.current
+    const searchLower = search.toLowerCase()
+    const matchingPoolPacks = search
+      ? current.filter((p) => p.name.toLowerCase().includes(searchLower) || p.code.toLowerCase().includes(searchLower))
+      : current
+    const poolIds = new Set(matchingPoolPacks.map((p) => p.id))
+
+    setAllPacks([
+      ...(matchingPoolPacks as PackPayload[]),
+      ...unassigned.filter((p) => !poolIds.has(p.id)),
+    ])
     setPacksLoading(false)
   }, [])
 
@@ -162,8 +172,8 @@ export default function EditPoolPage() {
     initialized.current = true
 
     const [ poolResult, packsResult ] = await Promise.all([
-      packPoolFindOneWithPacks(poolId),
-      packFindAll({ page: 1, limit: 10 }),
+      packPoolFindOneById(poolId),
+      packFindAll({ page: 1, limit: 10, unassigned: true }),
     ])
 
     if (poolResult.status >= 400 || !poolResult.response?.payload) {
@@ -201,6 +211,7 @@ export default function EditPoolPage() {
 
     if (p.packs) {
       setPoolPacks(p.packs)
+      poolPacksRef.current = p.packs
       setSelectedPackIds(new Set(p.packs.map((pack) => pack.id)))
 
       // Build rotation groups for manual mode
@@ -217,7 +228,14 @@ export default function EditPoolPage() {
       }
     }
 
-    setAllPacks(packsResult.response?.payload ?? [])
+    // Merge: pool's own packs + unassigned packs (deduped)
+    const unassignedPacks = packsResult.response?.payload ?? []
+    const poolPackIds = new Set((p.packs ?? []).map((pk) => pk.id))
+
+    setAllPacks([
+      ...((p.packs ?? []) as PackPayload[]),
+      ...unassignedPacks.filter((pk) => !poolPackIds.has(pk.id)),
+    ])
     setPacksLoading(false)
     setLoading(false)
   }, [ poolId, router ])
@@ -251,27 +269,30 @@ export default function EditPoolPage() {
       active_count:        activeCount,
       rotation_type:       rotationType,
       rotation_day:        rotationType !== "none" ? rotationDay : undefined,
-      rotation_interval:   rotationType === "weekly" ? rotationInterval : undefined,
+      rotation_interval:   rotationType === "weekly" ? rotationInterval : 1,
       rotation_hour:       rotationType !== "none" ? utcHour : undefined,
       rotation_order_mode: rotationOrderMode,
       preview_days:        previewDays || undefined,
-      pack_ids:            packIds.length > 0 ? packIds : undefined,
     })
 
+    if (status >= 400) {
+      setSaving(false)
+      toast.error("Failed to update pool")
+
+      return
+    }
+
+    // Assign packs (also unassigns packs no longer in the list)
+    await packPoolAssignPacks(poolId, { ids: packIds })
+
     // Sort rotation order for manual mode
-    if (status < 400 && rotationOrderMode === "manual" && packIds.length > 0) {
+    if (rotationOrderMode === "manual" && packIds.length > 0) {
       await packPoolSortRotation(poolId, { ids: packIds })
     }
 
     setSaving(false)
-
-    if (status < 400) {
-      toast.success("Pool updated")
-      router.push(Admin.Pools.List)
-    }
-    else {
-      toast.error("Failed to update pool")
-    }
+    toast.success("Pool updated")
+    router.push(Admin.Pools.List)
   }
 
   function togglePack(packId: string) {

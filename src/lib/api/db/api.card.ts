@@ -80,7 +80,7 @@ export async function cardFindAllByAnimeId(animeId: string, query: PaginationQue
 
   return await api.get<HttpResponse<CardPayload[]>>({
     url:         `/v1/card/anime/${animeId}`,
-    params:      query,
+    data:        query,
     bearerToken: token,
     serviceKey:  Env.systemServiceKey,
   })

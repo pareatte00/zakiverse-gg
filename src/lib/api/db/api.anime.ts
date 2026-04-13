@@ -36,7 +36,7 @@ export async function animeFindAll(query: PaginationQuery) {
 
   return await api.get<HttpResponse<AnimePayload[]>>({
     url:         "/v1/anime",
-    params:      query,
+    data:        query,
     bearerToken: token,
     serviceKey:  Env.systemServiceKey,
   })

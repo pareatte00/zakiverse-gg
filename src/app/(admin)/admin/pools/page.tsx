@@ -1,7 +1,7 @@
 "use client"
 
 import { AdminPageHeader } from "@/components/admin/admin-page-header"
-import { GameButton } from "@/components/game/game-button"
+import { GameButton, GameButtonGroup } from "@/components/game/game-button"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,9 +14,11 @@ import {
 } from "@/components/ui/alert-dialog"
 import type { BannerType, PackPoolPayload } from "@/lib/api/db/api.pack-pool"
 import { packPoolDeleteOneById, packPoolFindAll, packPoolUpdateOneById } from "@/lib/api/db/api.pack-pool"
+import { Switch } from "@/components/ui/switch"
 import { Admin } from "@/lib/const/const.url"
 import { cn } from "@/lib/utils"
-import { Boxes, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, Trash2 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Boxes, Calendar, ChevronLeft, ChevronRight, Layers, Loader2, Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -25,17 +27,11 @@ const PAGE_LIMIT = 20
 const BANNER_TYPE_STYLES: Record<BannerType, string> = {
   standard: "bg-zinc-700/30 text-zinc-400",
   featured: "bg-amber-500/10 text-amber-400",
-  event:    "bg-purple-500/10 text-purple-400",
-  beginner: "bg-emerald-500/10 text-emerald-400",
-  seasonal: "bg-sky-500/10 text-sky-400",
 }
-const BANNER_TYPES: Array<{ value: BannerType | "all", label: string }> = [
-  { value: "all", label: "All" },
-  { value: "standard", label: "Standard" },
-  { value: "featured", label: "Featured" },
-  { value: "event", label: "Event" },
-  { value: "beginner", label: "Beginner" },
-  { value: "seasonal", label: "Seasonal" },
+const BANNER_TYPES: Array<{ value: BannerType | "all", label: string, selectedClassName?: string }> = [
+  { value: "all", label: "All", selectedClassName: "!bg-amber-500/15 !text-amber-400 !border-amber-500/30" },
+  { value: "standard", label: "Standard", selectedClassName: "!bg-zinc-600/20 !text-zinc-300 !border-zinc-600/50" },
+  { value: "featured", label: "Featured", selectedClassName: "!bg-amber-500/15 !text-amber-400 !border-amber-500/30" },
 ]
 
 export default function PoolsListPage() {
@@ -48,14 +44,17 @@ export default function PoolsListPage() {
   const [ deleting, setDeleting ] = useState(false)
   const [ togglingId, setTogglingId ] = useState<string | null>(null)
   const [ bannerFilter, setBannerFilter ] = useState<BannerType | "all">("all")
+  const [ search, setSearch ] = useState("")
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>(null)
   const initialized = useRef(false)
-  const fetchPools = useCallback(async (p: number, filter: BannerType | "all") => {
+  const fetchPools = useCallback(async (p: number, filter: BannerType | "all", s: string) => {
     setLoading(true)
 
     const { response } = await packPoolFindAll({
       page:        p,
       limit:       PAGE_LIMIT,
       banner_type: filter === "all" ? undefined : filter,
+      search:      s || undefined,
     })
 
     setPools(response?.payload ?? [])
@@ -68,8 +67,8 @@ export default function PoolsListPage() {
     if (initialized.current) return
 
     initialized.current = true
-    void fetchPools(page, bannerFilter)
-  }, [ fetchPools, page, bannerFilter ])
+    void fetchPools(page, bannerFilter, search)
+  }, [ fetchPools, page, bannerFilter, search ])
 
   function handlePageChange(p: number) {
     setPage(p)
@@ -82,12 +81,23 @@ export default function PoolsListPage() {
     initialized.current = false
   }
 
+  function handleSearch(value: string) {
+    setSearch(value)
+
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+
+    searchTimer.current = setTimeout(() => {
+      setPage(1)
+      initialized.current = false
+    }, 300)
+  }
+
   useEffect(() => {
     if (!initialized.current) {
       initialized.current = true
-      void fetchPools(page, bannerFilter)
+      void fetchPools(page, bannerFilter, search)
     }
-  }, [ page, bannerFilter, fetchPools ])
+  }, [ page, bannerFilter, search, fetchPools ])
 
   async function handleToggleActive(pool: PackPoolPayload) {
     setTogglingId(pool.id)
@@ -117,7 +127,7 @@ export default function PoolsListPage() {
 
     if (status < 400) {
       toast.success(`Deleted "${deleteTarget.name}"`)
-      void fetchPools(page, bannerFilter)
+      void fetchPools(page, bannerFilter, search)
     }
     else {
       toast.error("Failed to delete pool")
@@ -146,23 +156,27 @@ export default function PoolsListPage() {
         title={"Pools"}
       />
 
+      {/* Search */}
+      <div className={"relative mt-6 max-w-xs"}>
+        <Search className={"absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600"} />
+
+        <Input
+          className={"h-9 border-zinc-700/60 bg-zinc-800/40 pl-8 text-sm text-zinc-200 placeholder:text-zinc-600 focus-visible:ring-0 focus-visible:ring-offset-0"}
+          placeholder={"Search pools..."}
+          type={"text"}
+          value={search}
+          onChange={(e) => handleSearch(e.target.value)}
+        />
+      </div>
+
       {/* Banner type filter */}
-      <div className={"mt-6 flex items-center gap-1.5"}>
-        {BANNER_TYPES.map((t) => (
-          <button
-            className={cn(
-              "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-              bannerFilter === t.value
-                ? "bg-amber-500/15 text-amber-400"
-                : "text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300",
-            )}
-            key={t.value}
-            type={"button"}
-            onClick={() => handleFilterChange(t.value)}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className={"mt-4"}>
+        <GameButtonGroup
+          options={BANNER_TYPES}
+          separated
+          value={bannerFilter}
+          onChange={handleFilterChange}
+        />
       </div>
 
       {/* Pool list */}
@@ -190,84 +204,99 @@ export default function PoolsListPage() {
             )
             : pools.map((pool) => (
               <div
-                className={"flex items-center gap-4 rounded-xl border border-zinc-800/40 bg-zinc-900/60 px-5 py-4 transition-colors hover:bg-zinc-800/40"}
+                className={cn(
+                  "relative rounded-xl border border-zinc-800/40 bg-zinc-900/60 transition-colors hover:bg-zinc-800/40",
+                  "border-l-[3px]",
+                  pool.banner_type === "featured" ? "border-l-amber-500" : "border-l-zinc-600",
+                )}
                 key={pool.id}
               >
-                {/* Pool image or icon */}
-                {pool.image
-                  ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      alt={pool.name}
-                      className={"h-14 w-14 shrink-0 rounded-lg object-cover"}
-                      src={pool.image}
-                    />
-                  )
-                  : (
-                    <div className={"flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-zinc-800/60"}>
-                      <Boxes className={"h-6 w-6 text-zinc-600"} />
-                    </div>
-                  )}
+                {/* Toggle — top right */}
+                <div className={"absolute right-4 top-4"}>
+                  <Switch
+                    checked={pool.is_active}
+                    className={"data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-zinc-700"}
+                    disabled={togglingId === pool.id}
+                    onCheckedChange={() => void handleToggleActive(pool)}
+                  />
+                </div>
 
-                {/* Pool info */}
-                <div className={"min-w-0 flex-1"}>
-                  <div className={"flex items-center gap-2"}>
-                    <p className={"truncate text-sm font-medium text-zinc-200"}>{pool.name}</p>
-
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
-                        BANNER_TYPE_STYLES[pool.banner_type],
-                      )}
-                    >
-                      {pool.banner_type}
-                    </span>
-
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
-                        pool.is_active
-                          ? "bg-emerald-500/10 text-emerald-400"
-                          : "bg-zinc-700/30 text-zinc-500",
-                      )}
-                    >
-                      {pool.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </div>
-
-                  {pool.description && (
-                    <p className={"mt-0.5 truncate text-xs text-zinc-500"}>{pool.description}</p>
-                  )}
-
-                  <div className={"mt-1.5 flex items-center gap-3 text-[11px] text-zinc-600"}>
-                    <span>{pool.active_count} {pool.active_count === 1 ? "pack" : "packs"}</span>
-                    <span className={"text-zinc-700"}>|</span>
-                    <span>Open: {formatDate(pool.open_at)}</span>
-                    <span className={"text-zinc-700"}>|</span>
-                    <span>Close: {formatDate(pool.close_at)}</span>
-
-                    {pool.rotation_type !== "none" && (
-                      <>
-                        <span className={"text-zinc-700"}>|</span>
-                        <span className={"capitalize"}>{pool.rotation_type} rotation</span>
-                      </>
+                <div className={"flex items-center gap-4 px-5 py-4"}>
+                  {/* Pool image or icon */}
+                  {pool.image
+                    ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        alt={pool.name}
+                        className={"h-16 w-16 shrink-0 rounded-lg object-cover"}
+                        src={pool.image}
+                      />
+                    )
+                    : (
+                      <div
+                        className={cn(
+                          "flex h-16 w-16 shrink-0 items-center justify-center rounded-lg",
+                          pool.banner_type === "featured" ? "bg-amber-500/10" : "bg-zinc-800/60",
+                        )}
+                      >
+                        <Boxes
+                          className={cn(
+                            "h-7 w-7",
+                            pool.banner_type === "featured" ? "text-amber-500/50" : "text-zinc-600",
+                          )}
+                        />
+                      </div>
                     )}
+
+                  {/* Pool info */}
+                  <div className={"min-w-0 flex-1"}>
+                    {/* Name + badges */}
+                    <div className={"flex items-center gap-2"}>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
+                          BANNER_TYPE_STYLES[pool.banner_type],
+                        )}
+                      >
+                        {pool.banner_type}
+                      </span>
+
+                      <p className={"truncate text-sm font-semibold text-zinc-100"}>{pool.name}</p>
+                    </div>
+
+                    {/* Description */}
+                    {pool.description && (
+                      <p className={"mt-1 truncate text-xs text-zinc-500"}>{pool.description}</p>
+                    )}
+
+                    {/* Stats with icons */}
+                    <div className={"mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5"}>
+                      <div className={"flex items-center gap-1.5 text-[11px] text-zinc-500"}>
+                        <Layers className={"h-3 w-3 text-zinc-600"} />
+                        <span>{pool.active_count} {pool.active_count === 1 ? "pack" : "packs"}</span>
+                      </div>
+
+                      <div className={"flex items-center gap-1.5 text-[11px] text-zinc-500"}>
+                        <Calendar className={"h-3 w-3 text-zinc-600"} />
+                        <span>
+                          {pool.open_at || pool.close_at
+                            ? `${formatDate(pool.open_at)} \u2013 ${formatDate(pool.close_at)}`
+                            : "No schedule"}
+                        </span>
+                      </div>
+
+                      {pool.rotation_type !== "none" && (
+                        <div className={"flex items-center gap-1.5 text-[11px] text-zinc-500"}>
+                          <RefreshCw className={"h-3 w-3 text-zinc-600"} />
+                          <span className={"capitalize"}>{pool.rotation_type}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div className={"flex shrink-0 items-center gap-2"}>
-                  <GameButton
-                    className={"!px-2.5 !py-1.5 !text-xs"}
-                    disabled={togglingId === pool.id}
-                    variant={"ghost"}
-                    onClick={() => void handleToggleActive(pool)}
-                  >
-                    {togglingId === pool.id
-                      ? <Loader2 className={"h-3.5 w-3.5 animate-spin"} />
-                      : pool.is_active ? "Deactivate" : "Activate"}
-                  </GameButton>
-
+                {/* Edit / Delete — bottom right */}
+                <div className={"flex items-center justify-end gap-2 border-t border-zinc-800/40 px-4 py-2"}>
                   <GameButton asChild className={"!px-2.5 !py-1.5"} variant={"ghost"}>
                     <Link href={Admin.Pools.Edit(pool.id)}>
                       <Pencil className={"h-3.5 w-3.5"} />

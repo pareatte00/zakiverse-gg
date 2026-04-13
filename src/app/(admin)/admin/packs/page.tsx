@@ -16,7 +16,8 @@ import {
 import type { PackPayload } from "@/lib/api/db/api.pack"
 import { packDeleteOneById, packFindAll } from "@/lib/api/db/api.pack"
 import { Admin } from "@/lib/const/const.url"
-import { ChevronLeft, ChevronRight, Gift, Loader2, Pencil, Plus, Trash2 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { ChevronLeft, ChevronRight, Gift, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -31,11 +32,13 @@ export default function PacksListPage() {
   const [ deleteTarget, setDeleteTarget ] = useState<PackPayload | null>(null)
   const [ deleting, setDeleting ] = useState(false)
   const [ totalPages, setTotalPages ] = useState(1)
+  const [ search, setSearch ] = useState("")
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>(null)
   const initialized = useRef(false)
-  const fetchPacks = useCallback(async (p: number) => {
+  const fetchPacks = useCallback(async (p: number, s: string) => {
     setLoading(true)
 
-    const { response } = await packFindAll({ page: p, limit: PAGE_LIMIT })
+    const { response } = await packFindAll({ page: p, limit: PAGE_LIMIT, search: s || undefined })
 
     setPacks(response?.payload ?? [])
     setTotal(response?.meta?.total ?? response?.payload?.length ?? 0)
@@ -47,20 +50,31 @@ export default function PacksListPage() {
     if (initialized.current) return
 
     initialized.current = true
-    void fetchPacks(page)
-  }, [ fetchPacks, page ])
+    void fetchPacks(page, search)
+  }, [ fetchPacks, page, search ])
 
   function handlePageChange(p: number) {
     setPage(p)
     initialized.current = false
   }
 
+  function handleSearch(value: string) {
+    setSearch(value)
+
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+
+    searchTimer.current = setTimeout(() => {
+      setPage(1)
+      initialized.current = false
+    }, 300)
+  }
+
   useEffect(() => {
     if (!initialized.current) {
       initialized.current = true
-      void fetchPacks(page)
+      void fetchPacks(page, search)
     }
-  }, [ page, fetchPacks ])
+  }, [ page, search, fetchPacks ])
 
   async function handleDelete() {
     if (!deleteTarget) return
@@ -74,7 +88,7 @@ export default function PacksListPage() {
 
     if (status < 400) {
       toast.success(`Deleted "${deleteTarget.name}"`)
-      void fetchPacks(page)
+      void fetchPacks(page, search)
     }
     else {
       toast.error("Failed to delete pack")
@@ -97,8 +111,21 @@ export default function PacksListPage() {
         title={"Packs"}
       />
 
+      {/* Search */}
+      <div className={"relative mt-6 max-w-xs"}>
+        <Search className={"absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600"} />
+
+        <Input
+          className={"h-9 border-zinc-700/60 bg-zinc-800/40 pl-8 text-sm text-zinc-200 placeholder:text-zinc-600 focus-visible:ring-0 focus-visible:ring-offset-0"}
+          placeholder={"Search packs..."}
+          type={"text"}
+          value={search}
+          onChange={(e) => handleSearch(e.target.value)}
+        />
+      </div>
+
       {/* Pack grid */}
-      <div className={"mt-6"}>
+      <div className={"mt-4"}>
         {loading
           ? (
             <div className={"grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4"}>

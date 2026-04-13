@@ -25,16 +25,12 @@ export interface PaginationQuery {
   limit: number
 }
 
-export interface CardTagFindAllQuery extends PaginationQuery {
-  search?: string
-}
-
-export async function cardTagFindAll(query: CardTagFindAllQuery) {
+export async function cardTagFindAll(query: PaginationQuery) {
   const token = await findCookie(Cookie.accessToken)
 
   return await api.get<HttpResponse<CardTagPayload[]>>({
     url:         "/v1/card-tag",
-    params:      query,
+    data:        query,
     bearerToken: token,
     serviceKey:  Env.systemServiceKey,
   })

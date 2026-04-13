@@ -84,22 +84,25 @@ interface GameButtonGroupProps<T extends string> {
   onChange:   (value: T) => void
   variant?:   GameButtonVariant
   className?: string
+  separated?: boolean
 }
 
-export function GameButtonGroup<T extends string>({ options, value, onChange, variant = "ghost", className }: GameButtonGroupProps<T>) {
+export function GameButtonGroup<T extends string>({ options, value, onChange, variant = "ghost", className, separated = false }: GameButtonGroupProps<T>) {
   return (
-    <div className={cn("flex flex-wrap", className)}>
+    <div className={cn("flex flex-wrap", separated ? "gap-2" : "", className)}>
       {options.map((opt, i) => {
         const isSelected = value === opt.value
 
         return (
           <GameButton
             className={cn(
-              i === 0
-                ? "rounded-r-none"
-                : i === options.length - 1
-                  ? "-ml-px rounded-l-none"
-                  : "-ml-px rounded-none",
+              !separated && (
+                i === 0
+                  ? "rounded-r-none"
+                  : i === options.length - 1
+                    ? "-ml-px rounded-l-none"
+                    : "-ml-px rounded-none"
+              ),
               isSelected && opt.selectedClassName,
             )}
             key={opt.value}
