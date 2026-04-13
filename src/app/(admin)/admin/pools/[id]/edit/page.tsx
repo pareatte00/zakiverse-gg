@@ -9,7 +9,6 @@ import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import type { PackPayload } from "@/lib/api/db/api.pack"
@@ -27,8 +26,6 @@ import { toast } from "sonner"
 
 const underlineInput = "h-auto rounded-none border-x-0 border-t-0 border-b border-zinc-700/60 bg-transparent px-0 pb-1.5 text-sm text-zinc-100 transition-colors placeholder:text-zinc-600 focus:border-amber-500/50 focus-visible:ring-0 focus-visible:ring-offset-0"
 const labelClass = "mb-1 block text-[11px] uppercase tracking-wider text-zinc-500"
-const selectTriggerClass = "h-9 border-zinc-700/60 bg-zinc-800/40 text-sm text-zinc-200 focus:ring-0 focus:ring-offset-0"
-const selectContentClass = "border-zinc-700 bg-zinc-900"
 const sectionCard = "rounded-xl border border-zinc-800/40 bg-zinc-900/60 p-5"
 const BANNER_OPTIONS: { value: BannerType, label: string, selectedClassName?: string }[] = [
   { value: "standard", label: "Standard", selectedClassName: "!bg-zinc-600/20 !text-zinc-300 !border-zinc-600/50" },
@@ -52,44 +49,6 @@ const ORDER_MODE_OPTIONS: { value: RotationOrderMode, label: string, selectedCla
   { value: "auto", label: "Auto", selectedClassName: "!bg-emerald-500/15 !text-emerald-400 !border-emerald-500/30" },
   { value: "manual", label: "Manual", selectedClassName: "!bg-amber-500/15 !text-amber-400 !border-amber-500/30" },
 ]
-const COMMON_TIMEZONES = [
-  "UTC",
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "America/Sao_Paulo",
-  "Europe/London",
-  "Europe/Paris",
-  "Europe/Berlin",
-  "Asia/Tokyo",
-  "Asia/Shanghai",
-  "Asia/Seoul",
-  "Asia/Bangkok",
-  "Asia/Jakarta",
-  "Asia/Kolkata",
-  "Australia/Sydney",
-  "Pacific/Auckland",
-]
-
-function localHourToUtc(hour: number, tz: string): number {
-  const midnight = new Date(Date.UTC(2025, 0, 15, hour, 0, 0))
-  const inTz = new Date(midnight.toLocaleString("en-US", { timeZone: tz }))
-  const offset = (inTz.getTime() - midnight.getTime()) / 3600000
-
-  return ((hour - Math.round(offset)) % 24 + 24) % 24
-}
-
-function utcHourToLocal(utcHour: number, tz: string): number {
-  const date = new Date(Date.UTC(2025, 0, 15, utcHour, 0, 0))
-  const formatted = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
-    hour:     "numeric",
-    hour12:   false,
-  }).format(date)
-
-  return parseInt(formatted, 10) % 24
-}
 
 export default function EditPoolPage() {
   const router = useRouter()
@@ -116,7 +75,6 @@ export default function EditPoolPage() {
   const [ rotationDay, setRotationDay ] = useState<number | undefined>(undefined)
   const [ rotationInterval, setRotationInterval ] = useState(1)
   const [ rotationHour, setRotationHour ] = useState(0)
-  const [ timezone, setTimezone ] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone)
   // Rotation info (read-only)
   const [ nextRotationAt, setNextRotationAt ] = useState<string | null>(null)
   const [ lastRotatedAt, setLastRotatedAt ] = useState<string | null>(null)
@@ -201,10 +159,7 @@ export default function EditPoolPage() {
     setNextRotationAt(p.next_rotation_at)
     setLastRotatedAt(p.last_rotated_at)
 
-    // Convert UTC hour to local timezone for display
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-
-    setRotationHour(p.rotation_type !== "none" ? utcHourToLocal(p.rotation_hour, tz) : p.rotation_hour)
+    setRotationHour(p.rotation_hour)
 
     // Packs
     setActiveCount(p.active_count || 1)
@@ -253,7 +208,6 @@ export default function EditPoolPage() {
 
     setSaving(true)
 
-    const utcHour = rotationType !== "none" ? localHourToUtc(rotationHour, timezone) : rotationHour
     const packIds = rotationOrderMode === "manual"
       ? rotationGroups.flat()
       : Array.from(selectedPackIds)
@@ -270,7 +224,8 @@ export default function EditPoolPage() {
       rotation_type:       rotationType,
       rotation_day:        rotationType !== "none" ? rotationDay : undefined,
       rotation_interval:   rotationType === "weekly" ? rotationInterval : 1,
-      rotation_hour:       rotationType !== "none" ? utcHour : undefined,
+      rotation_hour:       rotationType !== "none" ? rotationHour : undefined,
+      timezone_offset:     rotationType !== "none" ? -(new Date().getTimezoneOffset() / 60) : undefined,
       rotation_order_mode: rotationOrderMode,
       preview_days:        previewDays || undefined,
     })
@@ -594,29 +549,9 @@ export default function EditPoolPage() {
                 </div>
               )}
 
-              {/* Hour grid + timezone */}
+              {/* Hour grid */}
               <div>
-                <div className={"flex items-end gap-4"}>
-                  <div className={"flex-1"}>
-                    <Label className={labelClass}>Rotation Hour</Label>
-                  </div>
-
-                  <div className={"w-56"}>
-                    <Label className={labelClass}>Timezone</Label>
-
-                    <Select value={timezone} onValueChange={setTimezone}>
-                      <SelectTrigger className={selectTriggerClass}>
-                        <SelectValue />
-                      </SelectTrigger>
-
-                      <SelectContent className={selectContentClass}>
-                        {COMMON_TIMEZONES.map((tz) => (
-                          <SelectItem key={tz} value={tz}>{tz.replace(/_/g, " ")}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                <Label className={labelClass}>Rotation Hour</Label>
 
                 <div className={"mt-2 grid grid-cols-6 gap-1.5"}>
                   {Array.from({ length: 24 }, (_, i) => i).map((hour) => (

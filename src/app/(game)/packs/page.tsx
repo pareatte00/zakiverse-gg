@@ -13,8 +13,8 @@ import {
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import type { PackPayload, PullMode } from "@/lib/api/db/api.pack"
 import { packFindOneById } from "@/lib/api/db/api.pack"
-import type { BannerType, PackPoolPayload } from "@/lib/api/db/api.pack-pool"
-import { packPoolFindActiveBanners } from "@/lib/api/db/api.pack-pool"
+import type { BannerType, PackPoolPackItem, PackPoolPayload } from "@/lib/api/db/api.pack-pool"
+import { packPoolFindActiveBanners, packPoolFindNextPacks } from "@/lib/api/db/api.pack-pool"
 import { RARITY_COLORS } from "@/lib/const/const.rarity"
 import { useGameSound } from "@/lib/hook/use-game-sound"
 import { cn } from "@/lib/utils"
@@ -459,6 +459,34 @@ interface PoolSectionProps {
 
 function PoolSection({ pool, onPackClick, onInfo }: PoolSectionProps) {
   const packs = pool.packs ?? []
+  const [ nextPacks, setNextPacks ] = useState<PackPoolPackItem[]>([])
+  const [ nextPacksOpen, setNextPacksOpen ] = useState(false)
+  const [ nextPacksLoading, setNextPacksLoading ] = useState(false)
+  const hasPreview = pool.has_preview
+  const handleNextPacksClick = useCallback(async () => {
+    if (nextPacksOpen) {
+      setNextPacksOpen(false)
+
+      return
+    }
+
+    if (nextPacks.length > 0) {
+      setNextPacksOpen(true)
+
+      return
+    }
+
+    setNextPacksLoading(true)
+
+    const { response } = await packPoolFindNextPacks(pool.id)
+
+    if (response?.payload) {
+      setNextPacks(response.payload)
+    }
+
+    setNextPacksLoading(false)
+    setNextPacksOpen(true)
+  }, [ nextPacksOpen, nextPacks.length, pool.id ])
 
   if (packs.length === 0) return null
 
@@ -511,25 +539,80 @@ function PoolSection({ pool, onPackClick, onInfo }: PoolSectionProps) {
         </div>
       </div>
 
-      <Carousel
-        opts={{
-          loop:     true,
-          dragFree: true,
-          align:    "center",
-        }}
-      >
-        <CarouselContent className={"ml-2 pt-2"}>
-          {packs.map((pack) => (
-            <CarouselItem className={"basis-[200px] pl-2"} key={pack.id}>
-              <PackCard
-                pack={pack as PackPayload}
-                onClick={() => onPackClick(pack as PackPayload)}
-                onInfo={() => onInfo(pack as PackPayload)}
-              />
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-      </Carousel>
+      {/* Packs carousel + next rotation badge */}
+      <div className={"relative"}>
+        <Carousel
+          opts={{
+            loop:     true,
+            dragFree: true,
+            align:    "center",
+          }}
+        >
+          <CarouselContent className={"ml-2 pt-2"}>
+            {packs.map((pack) => (
+              <CarouselItem className={"basis-[200px] pl-2"} key={pack.id}>
+                <PackCard
+                  pack={pack as PackPayload}
+                  onClick={() => onPackClick(pack as PackPayload)}
+                  onInfo={() => onInfo(pack as PackPayload)}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+
+        {/* Next rotation badge */}
+        {hasPreview && (
+          <button
+            className={cn(
+              "absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors",
+              nextPacksOpen
+                ? "bg-amber-500/20 text-amber-300"
+                : "bg-stone-800/80 text-stone-400 hover:bg-stone-700/80 hover:text-stone-300",
+            )}
+            onClick={handleNextPacksClick}
+          >
+            {nextPacksLoading
+              ? (
+                <Loader2 className={"h-3 w-3 animate-spin"} />
+              )
+              : <Clock className={"h-3 w-3"} />}
+
+            <span>Next</span>
+          </button>
+        )}
+      </div>
+
+      {/* Next rotation packs reveal */}
+      {nextPacksOpen && nextPacks.length > 0 && (
+        <div className={"mx-3 mt-2 rounded-lg border border-stone-800/60 bg-stone-900/40 px-3 py-2.5"}>
+          <p className={"mb-2 text-[10px] font-medium uppercase tracking-wider text-stone-600"}>
+            Coming next rotation
+          </p>
+
+          <div className={"flex gap-2 overflow-x-auto pb-1"}>
+            {nextPacks.map((pack) => (
+              <div
+                className={"flex shrink-0 items-center gap-2 rounded-lg bg-stone-800/50 px-3 py-2"}
+                key={pack.id}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  alt={pack.name}
+                  className={"h-10 w-8 rounded object-cover"}
+                  draggable={false}
+                  src={pack.image}
+                />
+
+                <div className={"min-w-0"}>
+                  <p className={"truncate text-xs font-medium text-stone-300"}>{pack.name}</p>
+                  <p className={"text-[10px] text-stone-600"}>{pack.total_cards} cards</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

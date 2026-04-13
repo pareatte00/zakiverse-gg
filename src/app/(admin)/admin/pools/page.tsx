@@ -12,12 +12,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import type { BannerType, PackPoolPayload } from "@/lib/api/db/api.pack-pool"
 import { packPoolDeleteOneById, packPoolFindAll, packPoolUpdateOneById } from "@/lib/api/db/api.pack-pool"
-import { Switch } from "@/components/ui/switch"
 import { Admin } from "@/lib/const/const.url"
 import { cn } from "@/lib/utils"
-import { Input } from "@/components/ui/input"
 import { Boxes, Calendar, ChevronLeft, ChevronRight, Layers, Loader2, Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -172,8 +172,8 @@ export default function PoolsListPage() {
       {/* Banner type filter */}
       <div className={"mt-4"}>
         <GameButtonGroup
-          options={BANNER_TYPES}
           separated
+          options={BANNER_TYPES}
           value={bannerFilter}
           onChange={handleFilterChange}
         />
@@ -278,6 +278,7 @@ export default function PoolsListPage() {
 
                       <div className={"flex items-center gap-1.5 text-[11px] text-zinc-500"}>
                         <Calendar className={"h-3 w-3 text-zinc-600"} />
+
                         <span>
                           {pool.open_at || pool.close_at
                             ? `${formatDate(pool.open_at)} \u2013 ${formatDate(pool.close_at)}`

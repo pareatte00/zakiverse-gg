@@ -47,6 +47,7 @@ export interface PackPoolPayload {
   last_rotated_at:     string | null
   preview_days:        number
   is_preview:          boolean
+  has_preview:         boolean
   packs?:              PackPoolPackItem[]
   created_at:          string
   updated_at:          string
@@ -66,6 +67,7 @@ export interface CreatePackPoolRequest {
   rotation_day?:       number
   rotation_interval?:  number
   rotation_hour?:      number
+  timezone_offset?:    number
   rotation_order_mode: RotationOrderMode
   preview_days?:       number
 }
@@ -84,6 +86,7 @@ export interface UpdatePackPoolRequest {
   rotation_day?:        number
   rotation_interval?:   number
   rotation_hour?:       number
+  timezone_offset?:     number
   rotation_order_mode?: RotationOrderMode
   preview_days?:        number
 }
@@ -130,6 +133,17 @@ export async function packPoolFindOneById(id: string) {
 
   return await api.get<HttpResponse<PackPoolPayload>>({
     url:         `/v1/pack-pool/${id}`,
+    bearerToken: token,
+    serviceKey:  Env.systemServiceKey,
+  })
+}
+
+// User-facing: get next rotation packs for a pool
+export async function packPoolFindNextPacks(id: string) {
+  const token = await findCookie(Cookie.accessToken)
+
+  return await api.get<HttpResponse<PackPoolPackItem[]>>({
+    url:         `/v1/pack-pool/${id}/next-packs`,
     bearerToken: token,
     serviceKey:  Env.systemServiceKey,
   })
