@@ -3,15 +3,17 @@
 import type { Rarity } from "@/components/game/game-card"
 import { PackCard } from "@/components/game/pack-card"
 import type { EnrichedPulledCard } from "@/components/game/pack-opening/use-pack-opening"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import type { CardPayload } from "@/lib/api/db/api.card"
 import { cardFindOneById } from "@/lib/api/db/api.card"
-import type { PackPayload, PullMode } from "@/lib/api/db/api.pack"
-import { packPull } from "@/lib/api/db/api.pack"
-import { RARITIES } from "@/lib/const/const.rarity"
+import type { PackPayload, PityInfoPayload, PullHistoryPayload, PullMode } from "@/lib/api/db/api.pack"
+import { packGetPityInfo, packGetPullHistory, packPull } from "@/lib/api/db/api.pack"
+import { RARITIES, RARITY_COLORS } from "@/lib/const/const.rarity"
 import { useGameSound } from "@/lib/hook/use-game-sound"
 import { cn } from "@/lib/utils"
 import type { MotionValue } from "framer-motion"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
+import { Loader2, ScrollText } from "lucide-react"
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from "react"
 
 /* ── Constants ── */
@@ -45,6 +47,30 @@ const SEAL_CQW = 18.5
 const SEAL_CENTER_PCT = (SEAL_CQW / 2) / PACK_CQW_TOTAL // ~4.8%
 const ZOOM_SCALE_MAX = 2.8
 const LOCK_THRESHOLD_VH = 0.08
+const RARITY_BAR_BG: Record<string, string> = {
+  common:    "bg-stone-500",
+  rare:      "bg-blue-500",
+  epic:      "bg-purple-500",
+  legendary: "bg-amber-500",
+  prismatic: "bg-cyan-400",
+}
+const HISTORY_LIMIT = 20
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins}m ago`
+
+  const hours = Math.floor(mins / 60)
+
+  if (hours < 24) return `${hours}h ago`
+
+  const days = Math.floor(hours / 24)
+
+  return `${days}d ago`
+}
 
 function calcPackWidth() {
   if (typeof window === "undefined") return PACK_MAX_WIDTH
@@ -211,6 +237,49 @@ export function PackInspectOverlay({ pack, skipEntry, onOpenWithCards, onClose, 
   const [ isDismissing, setIsDismissing ] = useState(false)
   // ── Skip backdrop fade-in when returning from summary ──
   const skipFadeInRef = useRef(!!skipEntry)
+  // ── Stats panel ──
+  const [ statsOpen, setStatsOpen ] = useState(false)
+  const [ pityInfo, setPityInfo ] = useState<PityInfoPayload[]>([])
+  const [ pullHistory, setPullHistory ] = useState<PullHistoryPayload[]>([])
+  const [ statsLoading, setStatsLoading ] = useState(false)
+  const [ historyPage, setHistoryPage ] = useState(1)
+  const [ hasMoreHistory, setHasMoreHistory ] = useState(false)
+  const [ loadingMore, setLoadingMore ] = useState(false)
+  const loadStats = useCallback(async (packId: string) => {
+    setStatsLoading(true)
+    setPityInfo([])
+    setPullHistory([])
+    setHistoryPage(1)
+
+    const [ pityRes, historyRes ] = await Promise.all([
+      packGetPityInfo(packId),
+      packGetPullHistory(packId, { page: 1, limit: HISTORY_LIMIT }),
+    ])
+
+    setPityInfo(pityRes.response?.payload ?? [])
+    setPullHistory(historyRes.response?.payload ?? [])
+    setHasMoreHistory((historyRes.response?.meta?.page ?? 1) < (historyRes.response?.meta?.total_pages ?? 1))
+    setStatsLoading(false)
+  }, [])
+  const loadMoreHistory = useCallback(async () => {
+    if (!pack || loadingMore) return
+
+    setLoadingMore(true)
+
+    const nextPage = historyPage + 1
+    const { response } = await packGetPullHistory(pack.id, { page: nextPage, limit: HISTORY_LIMIT })
+
+    setPullHistory((prev) => [ ...prev, ...(response?.payload ?? []) ])
+    setHistoryPage(nextPage)
+    setHasMoreHistory((response?.meta?.page ?? 1) < (response?.meta?.total_pages ?? 1))
+    setLoadingMore(false)
+  }, [ pack, historyPage, loadingMore ])
+  const handleStatsOpen = useCallback(() => {
+    if (!pack) return
+
+    setStatsOpen(true)
+    void loadStats(pack.id)
+  }, [ pack, loadStats ])
 
   // ── Reset on pack change (layout to position before paint) ──
   useLayoutEffect(() => {
@@ -218,6 +287,7 @@ export function PackInspectOverlay({ pack, skipEntry, onOpenWithCards, onClose, 
       dispatch({ type: "RESET" })
       rawDelta.set(0)
       apiCalledRef.current = false
+      setStatsOpen(false)
       zoomTargetRef.current = { scale: ZOOM_SCALE_MAX }
       zoomFrozenRef.current = false
       setIsDragging(false)
@@ -338,6 +408,7 @@ export function PackInspectOverlay({ pack, skipEntry, onOpenWithCards, onClose, 
   const handleDismiss = useCallback(() => {
     if (isDismissing) return
 
+    setStatsOpen(false)
     setIsDismissing(true)
 
     // Slide pack down
@@ -495,6 +566,151 @@ export function PackInspectOverlay({ pack, skipEntry, onOpenWithCards, onClose, 
           </div>
         )}
       </div>
+
+      {/* Stats button */}
+      {showControls && !statsOpen && !isDismissing && (
+        <button
+          className={"pointer-events-auto fixed right-0 top-1/2 z-[92] flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-l-full bg-stone-800/80 text-stone-400 backdrop-blur-sm transition-colors hover:bg-stone-700/80 hover:text-stone-200"}
+          style={{
+            animation: skipFadeInRef.current ? "none" : "pi-fade-in 0.3s ease 0.4s forwards",
+            opacity:   skipFadeInRef.current ? 1 : 0,
+          }}
+          type={"button"}
+          onClick={handleStatsOpen}
+        >
+          <ScrollText className={"h-5 w-5"} />
+        </button>
+      )}
+
+      {/* Stats sheet */}
+      <Sheet open={statsOpen} onOpenChange={setStatsOpen}>
+        <SheetContent
+          className={"z-[100] flex w-[320px] flex-col border-stone-800 bg-stone-950 p-0 text-stone-100 sm:max-w-[320px] [&>button]:text-stone-500 [&>button]:hover:text-stone-300"}
+          overlayClassName={"z-[100] bg-transparent"}
+          side={"right"}
+        >
+          <SheetHeader className={"px-5 pb-3 pt-5"}>
+            <SheetTitle className={"text-sm font-semibold text-stone-200"}>Pull Stats</SheetTitle>
+            <SheetDescription className={"sr-only"}>Pity progress and pull history</SheetDescription>
+          </SheetHeader>
+
+          <div className={"min-h-0 flex-1 overflow-y-auto px-5 pb-6"}>
+            {statsLoading
+              ? (
+                <div className={"flex justify-center py-8"}>
+                  <Loader2 className={"h-5 w-5 animate-spin text-stone-600"} />
+                </div>
+              )
+              : (
+                <div className={"space-y-5"}>
+                  {/* Pity Progress */}
+                  {pityInfo.length > 0 && (
+                    <div className={"space-y-3"}>
+                      <p className={"text-[11px] font-semibold uppercase tracking-wider text-stone-500"}>
+                        Pity Progress
+                      </p>
+
+                      <div className={"space-y-2.5"}>
+                        {RARITIES.filter((r) => pityInfo.some((p) => p.rarity === r)).map((rarity) => {
+                          const pity = pityInfo.find((p) => p.rarity === rarity)!
+                          const pct = Math.min(100, (pity.counter / pity.threshold) * 100)
+                          const colors = RARITY_COLORS[rarity]
+                          const barBg = RARITY_BAR_BG[rarity] ?? "bg-stone-500"
+
+                          return (
+                            <div key={rarity}>
+                              <div className={"flex items-center justify-between"}>
+                                <span className={cn("text-xs font-medium", colors?.text ?? "text-stone-400")}>
+                                  {colors?.label ?? rarity}
+                                </span>
+
+                                <span className={"text-xs tabular-nums text-stone-500"}>
+                                  {pity.counter} / {pity.threshold}
+                                </span>
+                              </div>
+
+                              <div className={"mt-1 h-1.5 overflow-hidden rounded-full bg-stone-800"}>
+                                <div
+                                  className={cn("h-full rounded-full transition-all", barBg)}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pull History */}
+                  <div className={"space-y-2"}>
+                    <p className={"text-[11px] font-semibold uppercase tracking-wider text-stone-500"}>
+                      Recent Pulls
+                    </p>
+
+                    {pullHistory.length === 0
+                      ? <p className={"py-4 text-center text-xs text-stone-600"}>No pulls yet</p>
+                      : (
+                        <div className={"space-y-1"}>
+                          {pullHistory.map((pull) => {
+                            const colors = RARITY_COLORS[pull.rarity as Rarity]
+                            const barBg = RARITY_BAR_BG[pull.rarity] ?? "bg-stone-500"
+
+                            return (
+                              <div className={"flex items-center gap-2 rounded-lg bg-stone-900/60 px-3 py-2"} key={pull.id}>
+                                <span className={cn("h-2 w-2 shrink-0 rounded-full", barBg)} />
+
+                                <span className={cn("truncate text-xs font-medium", colors?.text ?? "text-stone-400")}>
+                                  {pull.card_name}
+                                </span>
+
+                                <div className={"flex items-center gap-1"}>
+                                  {pull.is_new && (
+                                    <span className={"rounded bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-400"}>
+                                      New
+                                    </span>
+                                  )}
+
+                                  {pull.is_pity && (
+                                    <span className={"rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-400"}>
+                                      Pity
+                                    </span>
+                                  )}
+
+                                  {pull.is_featured && (
+                                    <span className={"rounded bg-purple-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-purple-400"}>
+                                      Featured
+                                    </span>
+                                  )}
+                                </div>
+
+                                <span className={"ml-auto text-[10px] text-stone-600"}>
+                                  {timeAgo(pull.pulled_at)}
+                                </span>
+                              </div>
+                            )
+                          })}
+
+                          {hasMoreHistory && (
+                            <button
+                              className={"mt-2 w-full rounded-lg bg-stone-900 py-2 text-xs text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-300 disabled:opacity-50"}
+                              disabled={loadingMore}
+                              type={"button"}
+                              onClick={() => void loadMoreHistory()}
+                            >
+                              {loadingMore
+                                ? <Loader2 className={"mx-auto h-3.5 w-3.5 animate-spin"} />
+                                : "Load more"}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                  </div>
+                </div>
+              )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   )
 }

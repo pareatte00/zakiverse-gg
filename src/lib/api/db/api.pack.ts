@@ -24,6 +24,7 @@ export interface PackCardPayload {
   name:          string
   image:         string
   rarity:        string
+  tag_name:      string | null
   anime:         PackCardAnimePayload
 }
 
@@ -113,6 +114,9 @@ export interface PullHistoryPayload {
   id:          string
   pack_id:     string
   card_id:     string
+  card_name:   string
+  card_image:  string
+  tag_name:    string | null
   rarity:      string
   is_pity:     boolean
   is_featured: boolean

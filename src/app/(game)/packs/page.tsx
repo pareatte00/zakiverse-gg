@@ -1,7 +1,5 @@
 "use client"
 
-import type { Rarity } from "@/components/game/game-card"
-import { GameCard } from "@/components/game/game-card"
 import { PackCard } from "@/components/game/pack-card"
 import { PackInspectOverlay } from "@/components/game/pack-inspect-overlay"
 import { PackOpeningOverlay } from "@/components/game/pack-opening/pack-opening-overlay"
@@ -19,6 +17,7 @@ import type { BannerType, PackPoolPayload } from "@/lib/api/db/api.pack-pool"
 import { packPoolFindActiveBanners } from "@/lib/api/db/api.pack-pool"
 import { RARITY_COLORS } from "@/lib/const/const.rarity"
 import { useGameSound } from "@/lib/hook/use-game-sound"
+import { cn } from "@/lib/utils"
 import { Clock, Gift, Layers, Loader2, Package, Sparkles, Star } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
@@ -30,9 +29,52 @@ const RARITY_DOT_COLORS: Record<string, string> = {
   prismatic: "bg-cyan-400",
 }
 const BANNER_ORDER: BannerType[] = [ "featured", "standard" ]
-const BANNER_CONFIG: Record<BannerType, { label: string, icon: React.ReactNode, color: string }> = {
-  featured: { label: "Featured", icon: <Star className={"h-4 w-4"} />, color: "text-amber-400" },
-  standard: { label: "Standard", icon: <Package className={"h-4 w-4"} />, color: "text-stone-400" },
+
+interface BannerConfig {
+  label:  string
+  icon:   React.ReactNode
+  color:  string
+  ribbon: string
+  border: string
+}
+
+const BANNER_CONFIG: Record<BannerType, BannerConfig> = {
+  featured: {
+    label:  "Featured",
+    icon:   <Star className={"h-3.5 w-3.5"} />,
+    color:  "text-amber-400",
+    ribbon: "bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent",
+    border: "border-l-amber-500",
+  },
+  standard: {
+    label:  "Standard",
+    icon:   <Package className={"h-3.5 w-3.5"} />,
+    color:  "text-stone-400",
+    ribbon: "bg-gradient-to-r from-stone-600/20 via-stone-600/5 to-transparent",
+    border: "border-l-stone-600",
+  },
+}
+
+interface PoolStyle {
+  nameColor: string
+  lineColor: string
+  glowColor: string
+  descColor: string
+}
+
+const POOL_STYLE: Record<BannerType, PoolStyle> = {
+  featured: {
+    nameColor: "text-amber-200",
+    lineColor: "via-amber-500/40",
+    glowColor: "rgba(251,191,36,0.3)",
+    descColor: "text-amber-400/60",
+  },
+  standard: {
+    nameColor: "text-stone-200",
+    lineColor: "via-stone-500/30",
+    glowColor: "rgba(168,162,158,0.15)",
+    descColor: "text-stone-500",
+  },
 }
 
 /* ── Countdown ── */
@@ -200,13 +242,23 @@ export default function PacksPage() {
           const config = BANNER_CONFIG[type]
 
           return (
-            <section key={type}>
-              <div className={"flex items-center gap-2 px-4"}>
+            <section className={"space-y-4"} key={type}>
+              {/* Banner type header — once per type */}
+              <div className={cn(
+                "mx-3 flex items-center gap-2.5 rounded-lg border-l-[3px] px-4 py-2",
+                config.ribbon,
+                config.border,
+              )}
+              >
                 <span className={config.color}>{config.icon}</span>
-                <h2 className={`text-sm font-bold uppercase tracking-wider ${config.color}`}>{config.label}</h2>
+
+                <span className={cn("text-[11px] font-bold uppercase tracking-widest", config.color)}>
+                  {config.label}
+                </span>
               </div>
 
-              <div className={"space-y-4 pt-2"}>
+              {/* Pool sections */}
+              <div className={"space-y-5"}>
                 {pools.map((pool) => (
                   <PoolSection
                     key={pool.id}
@@ -318,6 +370,8 @@ export default function PacksPage() {
                           const colors = RARITY_COLORS[rarity as keyof typeof RARITY_COLORS]
                           const dotColor = RARITY_DOT_COLORS[rarity] ?? "bg-stone-500"
                           const cards = infoPack.cards?.filter((c) => c.rarity === rarity) ?? []
+                          const rarityRate = infoPack.config.rarity_rates[rarity] ?? 0
+                          const totalWeight = cards.reduce((sum, c) => sum + c.weight, 0)
 
                           if (cards.length === 0 && !infoLoading) return null
 
@@ -334,16 +388,43 @@ export default function PacksPage() {
                               </div>
 
                               {cards.length > 0 && (
-                                <div className={"mt-2 grid grid-cols-3 gap-2 sm:grid-cols-10"}>
-                                  {cards.map((card) => (
-                                    <GameCard
-                                      anime={typeof card.anime === "string" ? card.anime : (card.anime as { title: string })?.title}
-                                      image={card.image}
-                                      key={card.id}
-                                      name={card.name}
-                                      rarity={rarity as Rarity}
-                                    />
-                                  ))}
+                                <div className={"mt-2 space-y-1"}>
+                                  {cards.map((card) => {
+                                    const cardRate = totalWeight > 0
+                                      ? (rarityRate * card.weight / totalWeight)
+                                      : 0
+                                    const animeName = typeof card.anime === "string" ? card.anime : (card.anime as { title: string })?.title
+
+                                    return (
+                                      <div className={"rounded-md bg-stone-800/50 px-2.5 py-1.5 text-xs"} key={card.id}>
+                                        <div className={"flex items-center gap-2"}>
+                                          <span className={"min-w-0 flex-1 truncate font-medium text-stone-200"}>
+                                            {card.name}
+
+                                            {card.tag_name && (
+                                              <span className={"ml-1.5 text-[10px] font-normal text-stone-500"}>
+                                                {card.tag_name}
+                                              </span>
+                                            )}
+                                          </span>
+
+                                          {card.is_featured && (
+                                            <Star className={"h-3 w-3 shrink-0 text-amber-400"} />
+                                          )}
+
+                                          <span className={cn("shrink-0 font-mono text-[10px]", colors?.text ?? "text-stone-500")}>
+                                            {cardRate < 0.01 ? "<0.01" : cardRate.toFixed(2)}%
+                                          </span>
+                                        </div>
+
+                                        {animeName && (
+                                          <p className={"mt-0.5 truncate text-[10px] text-stone-500"}>
+                                            {animeName}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )
+                                  })}
                                 </div>
                               )}
 
@@ -383,15 +464,51 @@ function PoolSection({ pool, onPackClick, onInfo }: PoolSectionProps) {
 
   const countdownTarget = pool.rotation_type !== "none" ? pool.next_rotation_at : pool.close_at
   const countdownLabel = pool.rotation_type !== "none" ? "Next rotation in" : "Banner ends in"
+  const style = POOL_STYLE[pool.banner_type]
 
   return (
     <div>
-      <div className={"flex items-center gap-2 px-6"}>
-        <span className={"text-xs text-stone-400"}>{pool.name}</span>
+      {/* Pool header */}
+      <div className={"relative mx-3 overflow-hidden rounded-xl"}>
+        {/* Background: pool image or subtle gradient */}
+        {pool.image
+          ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img alt={""} className={"absolute inset-0 h-full w-full object-cover"} draggable={false} src={pool.image} />
+              <div className={"absolute inset-0 bg-gradient-to-r from-stone-950/90 via-stone-950/70 to-stone-950/90"} />
+            </>
+          )
+          : <div className={"absolute inset-0 bg-stone-900/60"} />}
 
-        {countdownTarget && (
-          <Countdown label={countdownLabel} targetDate={countdownTarget} />
-        )}
+        <div className={"relative px-5 py-4"}>
+          {/* Name with decorative flanking lines */}
+          <div className={"flex items-center gap-3"}>
+            <div className={cn("h-px flex-1 bg-gradient-to-r from-transparent to-transparent", style.lineColor)} />
+
+            <h2
+              className={cn("text-center text-base font-bold tracking-wide", style.nameColor)}
+              style={{ textShadow: `0 0 20px ${style.glowColor}` }}
+            >
+              {pool.name}
+            </h2>
+
+            <div className={cn("h-px flex-1 bg-gradient-to-r from-transparent to-transparent", style.lineColor)} />
+          </div>
+
+          {/* Description + countdown */}
+          {(pool.description || countdownTarget) && (
+            <div className={"mt-1.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1"}>
+              {pool.description && (
+                <p className={cn("text-center text-[11px]", style.descColor)}>{pool.description}</p>
+              )}
+
+              {countdownTarget && (
+                <Countdown label={countdownLabel} targetDate={countdownTarget} />
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <Carousel
@@ -403,7 +520,7 @@ function PoolSection({ pool, onPackClick, onInfo }: PoolSectionProps) {
       >
         <CarouselContent className={"ml-2 pt-2"}>
           {packs.map((pack) => (
-            <CarouselItem className={"basis-[280px] pl-2"} key={pack.id}>
+            <CarouselItem className={"basis-[200px] pl-2"} key={pack.id}>
               <PackCard
                 pack={pack as PackPayload}
                 onClick={() => onPackClick(pack as PackPayload)}

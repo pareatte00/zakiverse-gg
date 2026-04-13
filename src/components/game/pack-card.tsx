@@ -558,8 +558,8 @@ export function PackCard({ actions, highestRarity, isTearing = false, onClick, o
                 style={{
                   top:    "3cqw",
                   right:  "3cqw",
-                  width:  "12.3cqw",
-                  height: "12.3cqw",
+                  width:  "16cqw",
+                  height: "16cqw",
                 }}
                 variant={"default"}
                 onClick={(e) => {
@@ -567,7 +567,7 @@ export function PackCard({ actions, highestRarity, isTearing = false, onClick, o
                   onInfo()
                 }}
               >
-                <Info style={{ width: "6.2cqw", height: "6.2cqw" }} />
+                <Info style={{ width: "8cqw", height: "8cqw" }} />
               </GameButton>
             )}
 
