@@ -185,58 +185,24 @@ function SealContent() {
 
 /* ── Sealed Top Edge with Tear Support ── */
 
+type TearDirection = "left" | "right"
+
 interface SealedTopEdgeProps {
+  blowAway:       boolean
   highestRarity?: Rarity | null
-  isTearing:      boolean
-  onTearComplete: () => void
+  showTear:       boolean
+  tearDirection:  TearDirection
+  tearProgress:   number
 }
 
-function SealedTopEdge({ highestRarity, isTearing, onTearComplete }: SealedTopEdgeProps) {
-  const [ tearProgress, setTearProgress ] = useState(0)
-  const [ tearing, setTearing ] = useState(false)
-  const [ blowAway, setBlowAway ] = useState(false)
-  const tearRef = useRef<HTMLDivElement>(null)
-  const startXRef = useRef(0)
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (!isTearing || blowAway) return
-
-    startXRef.current = e.clientX
-    setTearing(true)
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-  }, [ isTearing, blowAway ])
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!tearing || !tearRef.current) return
-
-    const rect = tearRef.current.getBoundingClientRect()
-    const delta = e.clientX - startXRef.current
-    const progress = Math.max(0, Math.min(1, (delta / rect.width) * 2.5))
-    setTearProgress(progress)
-  }, [ tearing ])
-  const handlePointerUp = useCallback(() => {
-    if (!tearing) return
-
-    if (tearProgress >= 0.85) {
-      setBlowAway(true)
-      setTimeout(() => onTearComplete(), 600)
-    }
-    else {
-      setTearProgress(0)
-    }
-
-    setTearing(false)
-  }, [ tearing, tearProgress, onTearComplete ])
-  const showTear = tearProgress > 0.02
-  const beamX = tearProgress * 100
+function SealedTopEdge({ blowAway, highestRarity, showTear, tearDirection, tearProgress }: SealedTopEdgeProps) {
+  const isLeft = tearDirection === "left"
+  const beamX = isLeft ? (1 - tearProgress) * 100 : tearProgress * 100
 
   return (
     <div
       className={"relative z-10 rounded-t-[3cqw] bg-stone-950"}
-      ref={tearRef}
       style={{ height: "18.5cqw" }}
-      onPointerCancel={isTearing ? handlePointerUp : undefined}
-      onPointerDown={isTearing ? handlePointerDown : undefined}
-      onPointerMove={isTearing ? handlePointerMove : undefined}
-      onPointerUp={isTearing ? handlePointerUp : undefined}
     >
       {/* Iridescent light behind seal — visible where seal is torn away */}
       {(showTear || blowAway) && (
@@ -255,29 +221,18 @@ function SealedTopEdge({ highestRarity, isTearing, onTearComplete }: SealedTopEd
       <div
         className={"absolute inset-0 overflow-hidden rounded-t-[3cqw]"}
         style={{
-          clipPath:        isTearing || tearProgress > 0 ? `inset(0 0 0 ${tearProgress * 100}%)` : undefined,
+          clipPath: showTear || tearProgress > 0
+            ? isLeft
+              ? `inset(0 ${tearProgress * 100}% 0 0)`
+              : `inset(0 0 0 ${tearProgress * 100}%)`
+            : undefined,
           animation:       blowAway ? "pc-blow-away 0.8s ease-in forwards" : undefined,
           transformOrigin: blowAway ? "bottom center" : undefined,
-          transition:      !blowAway && !tearing ? "clip-path 0.3s ease-out" : undefined,
+          transition:      !blowAway && !showTear ? "clip-path 0.3s ease-out" : undefined,
         }}
       >
         <SealContent />
       </div>
-
-      {/* Tear hint — above the card */}
-      {isTearing && tearProgress === 0 && !blowAway && (
-        <div
-          className={"pointer-events-none absolute inset-x-0 z-20 flex justify-center"}
-          style={{ top: "-8cqw", animation: "pc-glow-pulse 2s ease-in-out infinite" }}
-        >
-          <span
-            className={"font-bold uppercase tracking-wider text-white/60 drop-shadow-lg"}
-            style={{ fontSize: "3.5cqw" }}
-          >
-            Tear to open →
-          </span>
-        </div>
-      )}
 
       {/* Iridescent line at seal–artwork boundary */}
       {!blowAway && (
@@ -387,6 +342,51 @@ export function PackCard({ actions, highestRarity, isTearing = false, onClick, o
   const [ hovered, setHovered ] = useState(false)
   const touchActiveRef = useRef(false)
   const touchTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
+  // ── Tear state (managed here so full card is draggable) ──
+  const [ tearProgress, setTearProgress ] = useState(0)
+  const [ tearDragging, setTearDragging ] = useState(false)
+  const [ tearDirection, setTearDirection ] = useState<TearDirection>("right")
+  const [ blowAway, setBlowAway ] = useState(false)
+  const tearStartXRef = useRef(0)
+  const handleTearDown = useCallback((e: React.PointerEvent) => {
+    if (!isTearing || blowAway) return
+
+    tearStartXRef.current = e.clientX
+    setTearDragging(true)
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }, [ isTearing, blowAway ])
+  const handleTearMove = useCallback((e: React.PointerEvent) => {
+    if (!tearDragging || !cardRef.current) return
+
+    const rect = cardRef.current.getBoundingClientRect()
+    const delta = e.clientX - tearStartXRef.current
+    const absDelta = Math.abs(delta)
+    const progress = Math.max(0, Math.min(1, (absDelta / rect.width) * 2.5))
+
+    setTearDirection(delta < 0 ? "left" : "right")
+    setTearProgress(progress)
+  }, [ tearDragging ])
+  const handleTearUp = useCallback(() => {
+    if (!tearDragging) return
+
+    if (tearProgress >= 0.85) {
+      setBlowAway(true)
+      setTimeout(() => onTearComplete?.(), 600)
+    }
+    else {
+      setTearProgress(0)
+    }
+
+    setTearDragging(false)
+  }, [ tearDragging, tearProgress, onTearComplete ])
+
+  useEffect(() => {
+    if (!isTearing) {
+      setTearProgress(0)
+      setTearDragging(false)
+      setBlowAway(false)
+    }
+  }, [ isTearing ])
 
   function applyTilt(clientX: number, clientY: number) {
     if (!tiltEnabled) return
@@ -484,15 +484,35 @@ export function PackCard({ actions, highestRarity, isTearing = false, onClick, o
     <div className={cn("relative mx-auto w-full select-none", onClick && "cursor-pointer")} style={{ containerType: "inline-size" }} onClick={onClick}>
       <style>{KEYFRAMES}</style>
 
+      {/* Tear hint — above the card */}
+      {isTearing && tearProgress === 0 && !blowAway && (
+        <div
+          className={"pointer-events-none absolute inset-x-0 z-20 flex justify-center"}
+          style={{ top: "-8cqw", animation: "pc-glow-pulse 2s ease-in-out infinite" }}
+        >
+          <span
+            className={"font-bold uppercase tracking-wider text-white/60 drop-shadow-lg"}
+            style={{ fontSize: "3.5cqw" }}
+          >
+            ← Tear to open →
+          </span>
+        </div>
+      )}
+
       <div
         className={"relative"}
         ref={cardRef}
         style={{
           transformStyle: "preserve-3d",
           boxShadow:      "0 2.8cqw 13.9cqw rgba(0,0,0,0.4), 0 0 20.8cqw rgba(255,255,255,0.03)",
+          touchAction:    isTearing ? "none" : undefined,
         }}
         onMouseLeave={resetTilt}
         onMouseMove={(e) => applyTilt(e.clientX, e.clientY)}
+        onPointerCancel={isTearing ? handleTearUp : undefined}
+        onPointerDown={isTearing ? handleTearDown : undefined}
+        onPointerMove={isTearing ? handleTearMove : undefined}
+        onPointerUp={isTearing ? handleTearUp : undefined}
         onTouchEnd={handleTouchEnd}
         onTouchStart={handleTouchStart}
       >
@@ -500,7 +520,7 @@ export function PackCard({ actions, highestRarity, isTearing = false, onClick, o
         <div className={"relative"}>
 
           {/* Sealed top edge with hang hole + tear support */}
-          <SealedTopEdge highestRarity={highestRarity} isTearing={isTearing} onTearComplete={onTearComplete ?? (() => {})} />
+          <SealedTopEdge blowAway={blowAway} highestRarity={highestRarity} showTear={tearProgress > 0.02} tearDirection={tearDirection} tearProgress={tearProgress} />
 
           {/* Main wrapper area — negative margin tucks under seal to prevent gap during tilt */}
           <div className={"relative overflow-hidden"} style={{ height: "169cqw", marginTop: "-0.5cqw" }}>

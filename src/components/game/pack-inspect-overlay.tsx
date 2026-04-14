@@ -554,7 +554,7 @@ export function PackInspectOverlay({ pack, skipEntry, onOpenWithCards, onClose, 
       {/* Stats button */}
       {showControls && !statsOpen && !isDismissing && (
         <button
-          className={"pointer-events-auto fixed right-0 top-1/2 z-[92] flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-l-full bg-stone-800/80 text-stone-400 backdrop-blur-sm transition-colors hover:bg-stone-700/80 hover:text-stone-200"}
+          className={"pointer-events-auto fixed right-0 top-1/2 z-[92] flex h-14 w-14 -translate-y-1/2 items-center justify-center rounded-l-full bg-stone-800/80 text-stone-400 backdrop-blur-sm transition-colors hover:bg-stone-700/80 hover:text-stone-200"}
           style={{
             animation: skipFadeInRef.current ? "none" : "pi-fade-in 0.3s ease 0.4s forwards",
             opacity:   skipFadeInRef.current ? 1 : 0,
