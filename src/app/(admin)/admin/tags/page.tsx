@@ -62,7 +62,11 @@ export default function TagsListPage() {
   const fetchTags = useCallback(async () => {
     setLoading(true)
 
-    const { response } = await cardTagFindAll({ page, limit: PAGE_LIMIT, search: debouncedSearch || undefined })
+    const { response } = await cardTagFindAll({
+      page,
+      limit:  PAGE_LIMIT,
+      search: debouncedSearch || undefined,
+    })
 
     setTags(response?.payload ?? [])
     setTotal(response?.meta?.total ?? 0)

@@ -21,8 +21,9 @@ export interface UpdateCardTagRequest {
 }
 
 export interface PaginationQuery {
-  page:  number
-  limit: number
+  page:    number
+  limit:   number
+  search?: string
 }
 
 export async function cardTagFindAll(query: PaginationQuery) {

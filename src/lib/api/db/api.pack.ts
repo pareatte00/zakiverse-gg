@@ -4,6 +4,7 @@ import { Cookie } from "@/lib/const/const.cookie"
 import { Env } from "@/lib/const/const.env"
 import { findCookie } from "@/lib/hook/cookie"
 import { api, HttpResponse } from "./api"
+import type { CardConfig } from "./api.card"
 
 export interface PackConfig {
   rarity_rates: Record<string, number>
@@ -25,6 +26,7 @@ export interface PackCardPayload {
   image:         string
   rarity:        string
   tag_name:      string | null
+  is_owned?:     boolean
   anime:         PackCardAnimePayload
 }
 
@@ -98,6 +100,12 @@ export interface PulledCardPayload {
   is_new:      boolean
   is_pity:     boolean
   is_featured: boolean
+  name:        string
+  image:       string
+  config:      CardConfig
+  tag_name:    string
+  favorite:    number
+  anime:       PackCardAnimePayload
 }
 
 export interface PullResultPayload {

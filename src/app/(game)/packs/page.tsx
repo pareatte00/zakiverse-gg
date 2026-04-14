@@ -58,6 +58,7 @@ const BANNER_CONFIG: Record<BannerType, BannerConfig> = {
 interface PoolStyle {
   nameColor: string
   lineColor: string
+  lineFade:  string
   glowColor: string
   descColor: string
 }
@@ -65,13 +66,15 @@ interface PoolStyle {
 const POOL_STYLE: Record<BannerType, PoolStyle> = {
   featured: {
     nameColor: "text-amber-200",
-    lineColor: "via-amber-500/40",
+    lineColor: "bg-amber-500/30",
+    lineFade:  "from-amber-500/30",
     glowColor: "rgba(251,191,36,0.3)",
     descColor: "text-amber-400/60",
   },
   standard: {
     nameColor: "text-stone-200",
-    lineColor: "via-stone-500/30",
+    lineColor: "bg-stone-500/20",
+    lineFade:  "from-stone-500/20",
     glowColor: "rgba(168,162,158,0.15)",
     descColor: "text-stone-500",
   },
@@ -79,7 +82,12 @@ const POOL_STYLE: Record<BannerType, PoolStyle> = {
 
 /* ── Countdown ── */
 
-function formatCountdown(targetDate: string): string | null {
+interface CountdownParts {
+  segments: { value: number, unit: string }[]
+  urgency:  "calm" | "warning" | "urgent" | "critical"
+}
+
+function parseCountdown(targetDate: string): CountdownParts | null {
   const diff = new Date(targetDate).getTime() - Date.now()
 
   if (diff <= 0) return null
@@ -89,17 +97,25 @@ function formatCountdown(targetDate: string): string | null {
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
   const seconds = Math.floor((diff % (1000 * 60)) / 1000)
 
-  if (days > 0) return `${days}d ${hours}h ${minutes}m`
-  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`
+  if (days > 0) return { segments: [ { value: days, unit: "d" }, { value: hours, unit: "h" } ], urgency: "calm" }
+  if (hours > 0) return { segments: [ { value: hours, unit: "h" }, { value: minutes, unit: "m" } ], urgency: "warning" }
+  if (minutes > 0) return { segments: [ { value: minutes, unit: "m" }, { value: seconds, unit: "s" } ], urgency: "urgent" }
 
-  return `${minutes}m ${seconds}s`
+  return { segments: [ { value: seconds, unit: "s" } ], urgency: "critical" }
+}
+
+const URGENCY_STYLE = {
+  calm:     { text: "text-stone-400", unit: "text-stone-600", pill: "bg-stone-800/60", icon: "text-stone-500" },
+  warning:  { text: "text-amber-300", unit: "text-amber-500/60", pill: "bg-amber-500/10", icon: "text-amber-400/70" },
+  urgent:   { text: "text-rose-300", unit: "text-rose-500/60", pill: "bg-rose-500/10", icon: "text-rose-400/70" },
+  critical: { text: "text-rose-400", unit: "text-rose-500/60", pill: "bg-rose-500/15", icon: "text-rose-400" },
 }
 
 function Countdown({ targetDate, label }: { targetDate: string, label: string }) {
-  const [ text, setText ] = useState<string | null>(() => formatCountdown(targetDate))
+  const [ parts, setParts ] = useState<CountdownParts | null>(() => parseCountdown(targetDate))
 
   useEffect(() => {
-    const update = () => setText(formatCountdown(targetDate))
+    const update = () => setParts(parseCountdown(targetDate))
 
     update()
 
@@ -108,14 +124,28 @@ function Countdown({ targetDate, label }: { targetDate: string, label: string })
     return () => clearInterval(id)
   }, [ targetDate ])
 
-  if (!text) return null
+  if (!parts) return null
+
+  const s = URGENCY_STYLE[parts.urgency]
+  const pulse = parts.urgency === "urgent" || parts.urgency === "critical"
 
   return (
-    <span className={"flex items-center gap-1 text-[11px] text-stone-500"}>
-      <Clock className={"h-3 w-3"} />
-      {label}
-      {" "}
-      {text}
+    <span className={"flex items-center gap-1.5"}>
+      <Clock className={cn("h-3.5 w-3.5", s.icon, pulse && "animate-pulse")} />
+      <span className={cn("text-[11px]", s.unit)}>{label}</span>
+
+      <span className={"flex items-center gap-1"}>
+        {parts.segments.map((seg) => (
+          <span
+            className={cn("rounded-md px-2 py-0.5 text-sm font-mono font-semibold tabular-nums", s.pill, s.text)}
+            key={seg.unit}
+          >
+            {seg.value}
+            {" "}
+            <span className={cn("text-[10px] font-normal", s.unit)}>{seg.unit}</span>
+          </span>
+        ))}
+      </span>
     </span>
   )
 }
@@ -510,25 +540,48 @@ function PoolSection({ pool, onPackClick, onInfo }: PoolSectionProps) {
           : <div className={"absolute inset-0 bg-stone-900/60"} />}
 
         <div className={"relative px-5 py-4"}>
-          {/* Name with decorative flanking lines */}
+          {/* Name with asymmetric lines */}
           <div className={"flex items-center gap-3"}>
-            <div className={cn("h-px flex-1 bg-gradient-to-r from-transparent to-transparent", style.lineColor)} />
+            <div className={cn("h-px w-5 rounded-full", style.lineColor)} />
 
             <h2
-              className={cn("text-center text-base font-bold tracking-wide", style.nameColor)}
+              className={cn("shrink-0 text-base font-bold tracking-wide", style.nameColor)}
               style={{ textShadow: `0 0 20px ${style.glowColor}` }}
             >
               {pool.name}
             </h2>
 
-            <div className={cn("h-px flex-1 bg-gradient-to-r from-transparent to-transparent", style.lineColor)} />
+            <div className={cn("h-px flex-1 bg-gradient-to-r to-transparent", style.lineFade)} />
+
+            {/* Next rotation preview badge */}
+            {hasPreview && (
+              <button
+                className={cn(
+                  "group relative flex shrink-0 items-center gap-1.5 overflow-hidden rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-all",
+                  nextPacksOpen
+                    ? "border-amber-500/40 bg-amber-500/15 text-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.15)]"
+                    : "border-stone-700/50 bg-stone-800/60 text-stone-500 hover:border-amber-500/30 hover:text-amber-400/80",
+                )}
+                onClick={handleNextPacksClick}
+              >
+                {nextPacksLoading
+                  ? <Loader2 className={"h-3 w-3 animate-spin"} />
+                  : <Layers className={cn("h-3 w-3 transition-transform", nextPacksOpen && "rotate-12")} />}
+
+                <span>Next</span>
+
+                {!nextPacksOpen && (
+                  <span className={"absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent opacity-0 transition-opacity group-hover:opacity-100"} />
+                )}
+              </button>
+            )}
           </div>
 
           {/* Description + countdown */}
           {(pool.description || countdownTarget) && (
-            <div className={"mt-1.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1"}>
+            <div className={"mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 pl-8"}>
               {pool.description && (
-                <p className={cn("text-center text-[11px]", style.descColor)}>{pool.description}</p>
+                <p className={cn("text-[11px]", style.descColor)}>{pool.description}</p>
               )}
 
               {countdownTarget && (
@@ -539,80 +592,59 @@ function PoolSection({ pool, onPackClick, onInfo }: PoolSectionProps) {
         </div>
       </div>
 
-      {/* Packs carousel + next rotation badge */}
-      <div className={"relative"}>
-        <Carousel
-          opts={{
-            loop:     true,
-            dragFree: true,
-            align:    "center",
-          }}
-        >
-          <CarouselContent className={"ml-2 pt-2"}>
-            {packs.map((pack) => (
-              <CarouselItem className={"basis-[200px] pl-2"} key={pack.id}>
-                <PackCard
-                  pack={pack as PackPayload}
-                  onClick={() => onPackClick(pack as PackPayload)}
-                  onInfo={() => onInfo(pack as PackPayload)}
-                />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
+      {/* Packs carousel */}
+      <Carousel
+        opts={{
+          loop:     true,
+          dragFree: true,
+          align:    "center",
+        }}
+      >
+        <CarouselContent className={"ml-2 pt-2"}>
+          {packs.map((pack) => (
+            <CarouselItem className={"basis-[200px] pl-2"} key={pack.id}>
+              <PackCard
+                pack={pack as PackPayload}
+                onClick={() => onPackClick(pack as PackPayload)}
+                onInfo={() => onInfo(pack as PackPayload)}
+              />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
 
-        {/* Next rotation badge */}
-        {hasPreview && (
-          <button
-            className={cn(
-              "absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors",
-              nextPacksOpen
-                ? "bg-amber-500/20 text-amber-300"
-                : "bg-stone-800/80 text-stone-400 hover:bg-stone-700/80 hover:text-stone-300",
-            )}
-            onClick={handleNextPacksClick}
-          >
-            {nextPacksLoading
-              ? (
-                <Loader2 className={"h-3 w-3 animate-spin"} />
-              )
-              : <Clock className={"h-3 w-3"} />}
+      {/* Next rotation packs drawer */}
+      <Drawer open={nextPacksOpen} onOpenChange={setNextPacksOpen}>
+        <DrawerContent className={"border-stone-800 bg-stone-950"}>
+          <div className={"relative overflow-hidden px-5 pb-6 pt-2"}>
+            {/* Ambient glow */}
+            <div className={"pointer-events-none absolute -top-10 left-1/2 h-24 w-48 -translate-x-1/2 rounded-full bg-amber-500/8 blur-3xl"} />
 
-            <span>Next</span>
-          </button>
-        )}
-      </div>
+            <DrawerHeader className={"relative px-0"}>
+              <div className={"flex items-center gap-2"}>
+                <Sparkles className={"h-4 w-4 text-amber-400/60"} />
 
-      {/* Next rotation packs reveal */}
-      {nextPacksOpen && nextPacks.length > 0 && (
-        <div className={"mx-3 mt-2 rounded-lg border border-stone-800/60 bg-stone-900/40 px-3 py-2.5"}>
-          <p className={"mb-2 text-[10px] font-medium uppercase tracking-wider text-stone-600"}>
-            Coming next rotation
-          </p>
+                <DrawerTitle className={"text-sm font-semibold uppercase tracking-widest text-amber-400/60"}>
+                  Coming Next
+                </DrawerTitle>
 
-          <div className={"flex gap-2 overflow-x-auto pb-1"}>
-            {nextPacks.map((pack) => (
-              <div
-                className={"flex shrink-0 items-center gap-2 rounded-lg bg-stone-800/50 px-3 py-2"}
-                key={pack.id}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  alt={pack.name}
-                  className={"h-10 w-8 rounded object-cover"}
-                  draggable={false}
-                  src={pack.image}
-                />
-
-                <div className={"min-w-0"}>
-                  <p className={"truncate text-xs font-medium text-stone-300"}>{pack.name}</p>
-                  <p className={"text-[10px] text-stone-600"}>{pack.total_cards} cards</p>
-                </div>
+                <div className={"h-px flex-1 bg-gradient-to-r from-amber-500/20 to-transparent"} />
               </div>
-            ))}
+            </DrawerHeader>
+
+            <div className={"flex gap-3 overflow-x-auto pb-2"}>
+              {nextPacks.map((pack) => (
+                <div className={"w-[140px] shrink-0"} key={pack.id}>
+                  <PackCard
+                    pack={pack as PackPayload}
+                    tiltEnabled={false}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        </DrawerContent>
+      </Drawer>
     </div>
   )
 }

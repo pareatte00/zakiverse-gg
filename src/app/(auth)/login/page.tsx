@@ -12,7 +12,7 @@ const DISCORD_AUTH_URL = `https://discord.com/oauth2/authorize?${new URLSearchPa
   client_id:     process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID!,
   redirect_uri:  process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI!,
   response_type: "code",
-  scope:         "identify",
+  scope:         "identify email",
 }).toString()}`
 
 export default function LoginPage() {

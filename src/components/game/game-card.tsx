@@ -198,9 +198,10 @@ interface GameCardProps {
   rarity?:          Rarity
   static?:          boolean
   tag?:             string
+  tiltDelay?:       number
 }
 
-export function GameCard({ name, anime, image, backgroundImage, rarity = "common", className, actions, noModal = false, static: isStatic = false, tag }: GameCardProps) {
+export function GameCard({ name, anime, image, backgroundImage, rarity = "common", className, actions, noModal = false, static: isStatic = false, tag, tiltDelay = 100 }: GameCardProps) {
   const config = RARITY_CONFIG[rarity]
   const cardRef = useRef<HTMLDivElement>(null)
   const bgRef = useRef<HTMLImageElement>(null)
@@ -222,14 +223,30 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
     setExpanded(true)
   }
 
+  function handleTouchMoveCapture(e: TouchEvent) {
+    if (!touchActiveRef.current) return
+
+    e.preventDefault()
+    const touch = e.touches[0]
+    if (touch) applyTilt(touch.clientX, touch.clientY)
+  }
+
+  const touchMoveRef = useRef(handleTouchMoveCapture)
+  touchMoveRef.current = handleTouchMoveCapture
+
   function handleTouchStart() {
     touchTimerRef.current = setTimeout(() => {
       touchActiveRef.current = true
-    }, 100)
+      const card = cardRef.current
+      if (card) card.addEventListener("touchmove", touchMoveRef.current, { passive: false })
+    }, tiltDelay)
   }
 
   function handleTouchEnd() {
     if (touchTimerRef.current) clearTimeout(touchTimerRef.current)
+
+    const card = cardRef.current
+    if (card && touchActiveRef.current) card.removeEventListener("touchmove", touchMoveRef.current)
 
     touchActiveRef.current = false
     resetTilt()
@@ -301,22 +318,14 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
     applyTilt(e.clientX, e.clientY)
   }
 
-  function handleTouchMove(e: TouchEvent) {
-    if (!touchActiveRef.current) return
-
-    e.preventDefault()
-    const touch = e.touches[0]
-    if (touch) applyTilt(touch.clientX, touch.clientY)
-  }
-
   useEffect(() => {
-    const card = cardRef.current
-    if (!card) return
+    return () => {
+      if (touchTimerRef.current) clearTimeout(touchTimerRef.current)
 
-    card.addEventListener("touchmove", handleTouchMove, { passive: false })
-
-    return () => card.removeEventListener("touchmove", handleTouchMove)
-  })
+      const card = cardRef.current
+      if (card && touchActiveRef.current) card.removeEventListener("touchmove", touchMoveRef.current)
+    }
+  }, [])
 
   return (
     <>
@@ -340,7 +349,7 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
             "aspect-[2/3] pointer-events-auto",
             expanded
               ? "w-64"
-              : cn("w-full", !isStatic && !noModal && "cursor-pointer"),
+              : cn("w-full", !noModal && "cursor-pointer"),
           )}
           ref={cardRef}
           style={{
@@ -348,7 +357,7 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
             transformStyle: "preserve-3d",
             animation:      expanded ? "gc-fade-in 0.2s ease" : undefined,
           }}
-          onClick={!isStatic && !noModal && !expanded ? handleExpand : undefined}
+          onClick={!noModal && !expanded ? handleExpand : undefined}
           onMouseLeave={!isStatic ? resetTilt : undefined}
           onMouseMove={!isStatic ? handleMouseMove : undefined}
           onTouchEnd={!isStatic ? handleTouchEnd : undefined}

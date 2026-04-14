@@ -4,8 +4,6 @@ import type { Rarity } from "@/components/game/game-card"
 import { PackCard } from "@/components/game/pack-card"
 import type { EnrichedPulledCard } from "@/components/game/pack-opening/use-pack-opening"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import type { CardPayload } from "@/lib/api/db/api.card"
-import { cardFindOneById } from "@/lib/api/db/api.card"
 import type { PackPayload, PityInfoPayload, PullHistoryPayload, PullMode } from "@/lib/api/db/api.pack"
 import { packGetPityInfo, packGetPullHistory, packPull } from "@/lib/api/db/api.pack"
 import { RARITIES, RARITY_COLORS } from "@/lib/const/const.rarity"
@@ -164,31 +162,17 @@ async function pullAndEnrich(packId: string, mode: PullMode) {
   }
 
   const pulled = response.payload.cards
-  const cardResults = await Promise.allSettled(pulled.map((pc) => cardFindOneById(pc.card_id)))
-  const cardMap = new Map<string, CardPayload>()
-
-  for (let i = 0; i < pulled.length; i++) {
-    const result = cardResults[i]
-
-    if (result.status === "fulfilled" && result.value.response?.payload) {
-      cardMap.set(pulled[i].card_id, result.value.response.payload)
-    }
-  }
-
-  const enriched: EnrichedPulledCard[] = pulled.map((pc) => {
-    const card = cardMap.get(pc.card_id)
-
-    return {
-      card_id:          pc.card_id,
-      rarity:           pc.rarity as Rarity,
-      is_new:           pc.is_new,
-      is_pity:          pc.is_pity,
-      name:             card?.name ?? "Unknown Card",
-      image:            card?.image ?? "",
-      background_image: card?.config?.background_image,
-      anime_title:      card?.anime?.title,
-    }
-  })
+  const enriched: EnrichedPulledCard[] = pulled.map((pc) => ({
+    card_id:          pc.card_id,
+    rarity:           pc.rarity as Rarity,
+    is_new:           pc.is_new,
+    is_pity:          pc.is_pity,
+    name:             pc.name,
+    image:            pc.image,
+    background_image: pc.config?.background_image,
+    tag_name:         pc.tag_name,
+    anime_title:      pc.anime?.title,
+  }))
   const highestRarity = enriched.reduce<Rarity>(
     (max, c) => RARITIES.indexOf(c.rarity) > RARITIES.indexOf(max) ? c.rarity : max,
     "common",

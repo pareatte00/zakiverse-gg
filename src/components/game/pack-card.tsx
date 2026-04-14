@@ -200,12 +200,6 @@ function SealedTopEdge({ highestRarity, isTearing, onTearComplete }: SealedTopEd
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (!isTearing || blowAway) return
 
-    const rect = tearRef.current?.getBoundingClientRect()
-    if (!rect) return
-
-    const relX = (e.clientX - rect.left) / rect.width
-    if (relX > 0.35) return
-
     startXRef.current = e.clientX
     setTearing(true)
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
@@ -215,7 +209,7 @@ function SealedTopEdge({ highestRarity, isTearing, onTearComplete }: SealedTopEd
 
     const rect = tearRef.current.getBoundingClientRect()
     const delta = e.clientX - startXRef.current
-    const progress = Math.max(0, Math.min(1, delta / rect.width))
+    const progress = Math.max(0, Math.min(1, (delta / rect.width) * 2.5))
     setTearProgress(progress)
   }, [ tearing ])
   const handlePointerUp = useCallback(() => {

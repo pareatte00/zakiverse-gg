@@ -12,16 +12,17 @@ export interface CardConfig {
 }
 
 export interface CardPayload {
-  id:       string
-  mal_id:   number
-  rarity:   Rarity
-  name:     string
-  image:    string
-  config:   CardConfig
-  tag_id:   string | null
-  tag_name: string | null
-  favorite: number
-  anime:    AnimePayload
+  id:        string
+  mal_id:    number
+  rarity:    Rarity
+  name:      string
+  image:     string
+  config:    CardConfig
+  tag_id:    string | null
+  tag_name:  string | null
+  favorite:  number
+  is_owned?: boolean
+  anime:     AnimePayload
 }
 
 export interface CreateCardRequest {
@@ -57,11 +58,12 @@ export type CardSortField = "name" | "rarity" | "favorite"
 export type CardSortOrder = "asc" | "desc"
 
 export interface CardFindAllQuery extends PaginationQuery {
-  search?: string
-  rarity?: Rarity
-  tag_id?: string
-  sort?:   CardSortField
-  order?:  CardSortOrder
+  search?:   string
+  rarity?:   Rarity
+  tag_id?:   string
+  anime_id?: string
+  sort?:     CardSortField
+  order?:    CardSortOrder
 }
 
 export async function cardFindAll(query: CardFindAllQuery) {
@@ -69,17 +71,6 @@ export async function cardFindAll(query: CardFindAllQuery) {
 
   return await api.get<HttpResponse<CardPayload[]>>({
     url:         "/v1/card",
-    data:        query,
-    bearerToken: token,
-    serviceKey:  Env.systemServiceKey,
-  })
-}
-
-export async function cardFindAllByAnimeId(animeId: string, query: PaginationQuery) {
-  const token = await findCookie(Cookie.accessToken)
-
-  return await api.get<HttpResponse<CardPayload[]>>({
-    url:         `/v1/card/anime/${animeId}`,
     data:        query,
     bearerToken: token,
     serviceKey:  Env.systemServiceKey,

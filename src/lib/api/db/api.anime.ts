@@ -27,8 +27,9 @@ export interface UpdateAnimeRequest {
 }
 
 export interface PaginationQuery {
-  page:  number
-  limit: number
+  search?: string
+  page:    number
+  limit:   number
 }
 
 export async function animeFindAll(query: PaginationQuery) {

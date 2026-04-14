@@ -285,11 +285,12 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance, onSk
         <motion.div
           className={"absolute inset-0"}
           style={{
-            x:       dragVisualX,
-            y:       dragVisualY,
-            rotate:  dragRotate,
-            scale:   dragScale,
-            opacity: dragOpacity,
+            x:           dragVisualX,
+            y:           dragVisualY,
+            rotate:      dragRotate,
+            scale:       dragScale,
+            opacity:     dragOpacity,
+            touchAction: "none",
           }}
           onPan={handlePan}
           onPanEnd={handlePanEnd}
@@ -309,6 +310,8 @@ export function CardReveal({ card, index, total, nextCardRarity, onAdvance, onSk
                 image={card.image}
                 name={card.name}
                 rarity={card.rarity}
+                tag={card.tag_name ?? undefined}
+                tiltDelay={1000}
               />
             </div>
 

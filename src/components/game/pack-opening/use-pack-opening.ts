@@ -1,8 +1,6 @@
 "use client"
 
 import type { Rarity } from "@/components/game/game-card"
-import type { CardPayload } from "@/lib/api/db/api.card"
-import { cardFindOneById } from "@/lib/api/db/api.card"
 import type { PullMode } from "@/lib/api/db/api.pack"
 import { packPull } from "@/lib/api/db/api.pack"
 import { useCallback, useEffect, useReducer, useRef } from "react"
@@ -17,6 +15,7 @@ export interface EnrichedPulledCard {
   name:              string
   image:             string
   background_image?: string
+  tag_name?:         string
   anime_title?:      string
 }
 
@@ -186,32 +185,17 @@ export function usePackOpening() {
       }
 
       const pulled = response.payload.cards
-      // Fetch full card data in parallel
-      const cardResults = await Promise.allSettled(pulled.map((pc) => cardFindOneById(pc.card_id)))
-      const cardMap = new Map<string, CardPayload>()
-
-      for (let i = 0; i < pulled.length; i++) {
-        const result = cardResults[i]
-
-        if (result.status === "fulfilled" && result.value.response?.payload) {
-          cardMap.set(pulled[i].card_id, result.value.response.payload)
-        }
-      }
-
-      const enriched: EnrichedPulledCard[] = pulled.map((pc) => {
-        const card = cardMap.get(pc.card_id)
-
-        return {
-          card_id:          pc.card_id,
-          rarity:           pc.rarity as Rarity,
-          is_new:           pc.is_new,
-          is_pity:          pc.is_pity,
-          name:             card?.name ?? "Unknown Card",
-          image:            card?.image ?? "",
-          background_image: card?.config?.background_image,
-          anime_title:      card?.anime?.title,
-        }
-      })
+      const enriched: EnrichedPulledCard[] = pulled.map((pc) => ({
+        card_id:          pc.card_id,
+        rarity:           pc.rarity as Rarity,
+        is_new:           pc.is_new,
+        is_pity:          pc.is_pity,
+        name:             pc.name,
+        image:            pc.image,
+        background_image: pc.config?.background_image,
+        tag_name:         pc.tag_name,
+        anime_title:      pc.anime?.title,
+      }))
 
       dispatch({ type: "LOADED", cards: enriched })
     }
