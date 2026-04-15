@@ -10,12 +10,12 @@ import type { CardFindAllQuery, CardPayload } from "@/lib/api/db/api.card"
 import { cardFindAll } from "@/lib/api/db/api.card"
 import type { CardTagPayload } from "@/lib/api/db/api.card-tag"
 import { cardTagFindAll } from "@/lib/api/db/api.card-tag"
-import type { PackPayload } from "@/lib/api/db/api.pack"
-import { packFindAll } from "@/lib/api/db/api.pack"
+import type { PackCardPayload, PackPayload } from "@/lib/api/db/api.pack"
+import { packFindAll, packFindOneById } from "@/lib/api/db/api.pack"
 import { RARITIES, RARITY_COLORS } from "@/lib/const/const.rarity"
 import { cn } from "@/lib/utils"
-import { Diamond, Film, Loader2, Package, Search, Tag, X } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { ArrowLeft, Diamond, Film, Loader2, Package, Search, Tag, X } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 type Tab = "cards" | "packs"
 
@@ -58,6 +58,14 @@ export default function CollectionPage() {
   const [ hasMorePacks, setHasMorePacks ] = useState(false)
   const [ packsLoading, setPacksLoading ] = useState(true)
   const [ packsLoadingMore, setPacksLoadingMore ] = useState(false)
+  // ── Pack search ──
+  const [ packSearch, setPackSearch ] = useState("")
+  const [ debouncedPackSearch, setDebouncedPackSearch ] = useState("")
+  // ── Pack detail (view cards inside a pack) ──
+  const [ selectedPack, setSelectedPack ] = useState<PackPayload | null>(null)
+  const [ packCards, setPackCards ] = useState<PackCardPayload[]>([])
+  const [ packDetailLoading, setPackDetailLoading ] = useState(false)
+  const [ packRarity, setPackRarity ] = useState<Rarity | null>(null)
   const initializedCards = useRef(false)
   const initializedPacks = useRef(false)
 
@@ -67,6 +75,13 @@ export default function CollectionPage() {
 
     return () => clearTimeout(timer)
   }, [ search ])
+
+  // ── Debounce pack search ──
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedPackSearch(packSearch), 300)
+
+    return () => clearTimeout(timer)
+  }, [ packSearch ])
 
   // ── Fetch animes on debounced search in anime mode (server-side search) ──
   useEffect(() => {
@@ -140,12 +155,13 @@ export default function CollectionPage() {
     fetchCards(1, false)
   }, [ fetchCards ])
 
-  // ── Fetch packs (lazy on first tab switch) ──
+  // ── Fetch packs ──
   const fetchPacks = useCallback(async (page: number, append: boolean) => {
     if (page === 1) setPacksLoading(true)
     else setPacksLoadingMore(true)
 
-    const { response } = await packFindAll({ page, limit: PAGE_LIMIT })
+    const query = { page, limit: PAGE_LIMIT, search: debouncedPackSearch || undefined }
+    const { response } = await packFindAll(query)
     const payload = response?.payload ?? []
     const meta = response?.meta
 
@@ -156,15 +172,43 @@ export default function CollectionPage() {
     setHasMorePacks(meta ? page < meta.total_pages : false)
     setPacksLoading(false)
     setPacksLoadingMore(false)
-  }, [])
+  }, [ debouncedPackSearch ])
 
+  // ── Refetch packs when search changes ──
   useEffect(() => {
-    if (tab !== "packs" || initializedPacks.current) return
+    if (tab !== "packs") return
 
-    initializedPacks.current = true
+    if (!initializedPacks.current) {
+      initializedPacks.current = true
+    }
+
     fetchPacks(1, false)
   }, [ tab, fetchPacks ])
 
+  // ── Open pack detail ──
+  async function handlePackClick(pack: PackPayload) {
+    setSelectedPack(pack)
+    setPackDetailLoading(true)
+    setPackRarity("common")
+
+    const { response } = await packFindOneById(pack.id)
+
+    setPackCards(response?.payload?.cards ?? [])
+    setPackDetailLoading(false)
+  }
+
+  function handlePackDetailBack() {
+    setSelectedPack(null)
+    setPackCards([])
+    setPackRarity(null)
+  }
+
+  // ── Filter pack cards by rarity (client-side) ──
+  const filteredPackCards = useMemo(() => {
+    if (!packRarity) return packCards
+
+    return packCards.filter((c) => c.rarity === packRarity)
+  }, [ packCards, packRarity ])
   // ── Search mode helpers ──
   const SEARCH_MODES: SearchMode[] = [ "card", "anime", "tag" ]
 
@@ -202,6 +246,18 @@ export default function CollectionPage() {
     setTagId(null)
     setTagName(null)
     setRarity("common")
+  }
+
+  // ── Show rarity sidebar when: cards tab OR pack detail view ──
+  const showRarityFilters = tab === "cards" || (tab === "packs" && selectedPack !== null)
+  const activeRarity = tab === "cards" ? rarity : packRarity
+  const handleRarityClick = (r: Rarity) => {
+    if (tab === "cards") {
+      setRarity(r)
+    }
+    else {
+      setPackRarity(r)
+    }
   }
 
   return (
@@ -247,15 +303,14 @@ export default function CollectionPage() {
             )
           })}
 
-          {/* Separator + Rarity filters (cards tab only) */}
-          {tab === "cards" && (
+          {/* Separator + Rarity filters */}
+          {showRarityFilters && (
             <>
               <div className={"my-1 h-px w-6 bg-stone-800"} />
 
-              {/* Each rarity — icon always shows its rarity color */}
               {RARITIES.map((r) => {
                 const colors = RARITY_COLORS[r]
-                const isActive = rarity === r
+                const isActive = activeRarity === r
 
                 return (
                   <button
@@ -264,7 +319,7 @@ export default function CollectionPage() {
                       isActive ? colors.text : cn(colors.text, "opacity-30 hover:opacity-50"),
                     )}
                     key={r}
-                    onClick={() => setRarity(r)}
+                    onClick={() => handleRarityClick(r)}
                   >
                     {isActive && (
                       <div
@@ -436,13 +491,13 @@ export default function CollectionPage() {
                           key={card.id}
                         >
                           <GameCard
-                            static
                             anime={card.anime?.title}
                             backgroundImage={card.config?.background_image}
                             image={card.image}
                             name={card.name}
                             noModal={!card.is_owned}
                             rarity={card.rarity}
+                            static={!card.is_owned}
                             tag={card.tag_name ?? undefined}
                           />
                         </div>
@@ -468,44 +523,134 @@ export default function CollectionPage() {
         {/* ── Packs tab ── */}
         {tab === "packs" && (
           <>
-            {packsLoading
+            {/* ── Pack detail view ── */}
+            {selectedPack
               ? (
-                <div className={"flex flex-col items-center justify-center py-16"}>
-                  <Loader2 className={"h-5 w-5 animate-spin text-stone-600"} />
-                  <p className={"mt-2 text-xs text-stone-600"}>Loading packs...</p>
-                </div>
-              )
-              : packs.length === 0
-                ? (
-                  <div className={"flex flex-col items-center justify-center py-16"}>
-                    <p className={"text-sm text-stone-600"}>No packs found.</p>
+                <>
+                  {/* Header with back button + pack name */}
+                  <div className={"flex items-center gap-2"}>
+                    <button
+                      className={"flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 transition-colors hover:bg-stone-800/60 hover:text-stone-300"}
+                      onClick={handlePackDetailBack}
+                    >
+                      <ArrowLeft className={"h-4 w-4"} />
+                    </button>
+
+                    <h2 className={"truncate text-sm font-semibold text-stone-200"}>{selectedPack.name}</h2>
+
+                    <span className={"ml-auto text-[10px] text-stone-600"}>
+                      {filteredPackCards.length}
+                      {" "}
+                      card{filteredPackCards.length !== 1 ? "s" : ""}
+                    </span>
                   </div>
-                )
-                : (
-                  <>
-                    <div className={"grid grid-cols-2 gap-3"}>
-                      {packs.map((pack) => (
-                        <PackCard
-                          key={pack.id}
-                          pack={pack}
-                          tiltEnabled={false}
-                        />
-                      ))}
+
+                  {/* Cards inside pack */}
+                  {packDetailLoading
+                    ? (
+                      <div className={"flex flex-col items-center justify-center py-16"}>
+                        <Loader2 className={"h-5 w-5 animate-spin text-stone-600"} />
+                        <p className={"mt-2 text-xs text-stone-600"}>Loading cards...</p>
+                      </div>
+                    )
+                    : filteredPackCards.length === 0
+                      ? (
+                        <div className={"flex flex-col items-center justify-center py-16"}>
+                          <p className={"text-sm text-stone-600"}>
+                            {packRarity ? "No cards with this rarity." : "No cards in this pack."}
+                          </p>
+                        </div>
+                      )
+                      : (
+                        <div className={"grid grid-cols-3 gap-2"}>
+                          {filteredPackCards.map((card) => (
+                            <div
+                              className={cn(!card.is_owned && "pointer-events-none grayscale opacity-40")}
+                              key={card.id}
+                            >
+                              <GameCard
+                                anime={card.anime?.title}
+                                image={card.image}
+                                name={card.name}
+                                noModal={!card.is_owned}
+                                rarity={card.rarity as Rarity}
+                                static={!card.is_owned}
+                                tag={card.tag_name ?? undefined}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                </>
+              )
+              : (
+                <>
+                  {/* Pack search */}
+                  <div className={"flex items-center rounded-lg bg-stone-950"}>
+                    <div className={"flex shrink-0 items-center justify-center px-3 text-stone-500"}>
+                      <Search className={"h-3.5 w-3.5"} />
                     </div>
 
-                    {hasMorePacks && (
+                    <input
+                      className={"h-10 w-full bg-transparent pr-3 text-xs text-stone-200 placeholder:text-stone-600 focus:outline-none"}
+                      placeholder={"Search packs..."}
+                      type={"text"}
+                      value={packSearch}
+                      onChange={(e) => setPackSearch(e.target.value)}
+                    />
+
+                    {packSearch && (
                       <button
-                        className={"mx-auto flex items-center gap-2 rounded-lg bg-stone-800/60 px-5 py-2 text-xs font-semibold text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-300"}
-                        disabled={packsLoadingMore}
-                        onClick={() => fetchPacks(packPage + 1, true)}
+                        className={"pr-3 text-stone-600 hover:text-stone-400"}
+                        onClick={() => setPackSearch("")}
                       >
-                        {packsLoadingMore
-                          ? <Loader2 className={"h-3.5 w-3.5 animate-spin"} />
-                          : "Load more"}
+                        <X className={"h-3.5 w-3.5"} />
                       </button>
                     )}
-                  </>
-                )}
+                  </div>
+
+                  {/* Pack grid */}
+                  {packsLoading
+                    ? (
+                      <div className={"flex flex-col items-center justify-center py-16"}>
+                        <Loader2 className={"h-5 w-5 animate-spin text-stone-600"} />
+                        <p className={"mt-2 text-xs text-stone-600"}>Loading packs...</p>
+                      </div>
+                    )
+                    : packs.length === 0
+                      ? (
+                        <div className={"flex flex-col items-center justify-center py-16"}>
+                          <p className={"text-sm text-stone-600"}>No packs found.</p>
+                        </div>
+                      )
+                      : (
+                        <>
+                          <div className={"grid grid-cols-2 gap-3"}>
+                            {packs.map((pack) => (
+                              <PackCard
+                                key={pack.id}
+                                pack={pack}
+                                tiltEnabled={false}
+                                onClick={() => handlePackClick(pack)}
+                              />
+                            ))}
+                          </div>
+
+                          {hasMorePacks && (
+                            <button
+                              className={"mx-auto flex items-center gap-2 rounded-lg bg-stone-800/60 px-5 py-2 text-xs font-semibold text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-300"}
+                              disabled={packsLoadingMore}
+                              onClick={() => fetchPacks(packPage + 1, true)}
+                            >
+                              {packsLoadingMore
+                                ? <Loader2 className={"h-3.5 w-3.5 animate-spin"} />
+                                : "Load more"}
+                            </button>
+                          )}
+                        </>
+                      )}
+                </>
+              )}
           </>
         )}
       </div>
