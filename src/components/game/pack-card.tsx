@@ -4,6 +4,7 @@
 import { GameButton } from "@/components/game/game-button"
 import type { Rarity } from "@/components/game/game-card"
 import type { PackPayload } from "@/lib/api/db/api.pack"
+import { useGameSound } from "@/lib/hook/use-game-sound"
 import { cn } from "@/lib/utils"
 import { Info } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -348,13 +349,24 @@ export function PackCard({ actions, highestRarity, isTearing = false, onClick, o
   const [ tearDirection, setTearDirection ] = useState<TearDirection>("right")
   const [ blowAway, setBlowAway ] = useState(false)
   const tearStartXRef = useRef(0)
+  const { playFrom, preload, startScrub, scrub, stopScrub } = useGameSound()
+  const tearSoundRef = useRef<string | null>(null)
+
+  // Preload audio file for tear sound when tearing mode activates
+  useEffect(() => {
+    if (isTearing) preload("tear-drag")
+  }, [ isTearing, preload ])
+
   const handleTearDown = useCallback((e: React.PointerEvent) => {
     if (!isTearing || blowAway) return
 
     tearStartXRef.current = e.clientX
     setTearDragging(true)
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-  }, [ isTearing, blowAway ])
+
+    // Prepare scrub session
+    tearSoundRef.current = startScrub("tear-drag", { volume: 0.4 })
+  }, [ isTearing, blowAway, startScrub ])
   const handleTearMove = useCallback((e: React.PointerEvent) => {
     if (!tearDragging || !cardRef.current) return
 
@@ -365,12 +377,24 @@ export function PackCard({ actions, highestRarity, isTearing = false, onClick, o
 
     setTearDirection(delta < 0 ? "left" : "right")
     setTearProgress(progress)
-  }, [ tearDragging ])
+
+    // Scrub audio position to match tear progress
+    if (tearSoundRef.current) {
+      scrub(tearSoundRef.current, progress, { volume: 0.2 + progress * 0.5 })
+    }
+  }, [ tearDragging, scrub ])
   const handleTearUp = useCallback(() => {
     if (!tearDragging) return
 
+    // Stop scrub
+    if (tearSoundRef.current) {
+      stopScrub(tearSoundRef.current)
+      tearSoundRef.current = null
+    }
+
     if (tearProgress >= 0.85) {
       setBlowAway(true)
+      playFrom("tear-drag", -1)
       setTimeout(() => onTearComplete?.(), 600)
     }
     else {
@@ -378,7 +402,7 @@ export function PackCard({ actions, highestRarity, isTearing = false, onClick, o
     }
 
     setTearDragging(false)
-  }, [ tearDragging, tearProgress, onTearComplete ])
+  }, [ tearDragging, tearProgress, onTearComplete, playFrom, stopScrub ])
 
   useEffect(() => {
     if (!isTearing) {

@@ -384,7 +384,6 @@ export function PackInspectOverlay({ pack, skipEntry, onOpenWithCards, onClose, 
 
   // ── Phase-based sound effects ──
   useEffect(() => {
-    if (state.phase === "tearing") play("pack-tear")
     if (state.phase === "sliding") play("pack-slide")
   }, [ state.phase, play ])
 

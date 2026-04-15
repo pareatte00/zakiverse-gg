@@ -230,7 +230,7 @@ const summaryDismiss: SynthFn = (ctx, dest) => {
   osc.stop(t + 0.1)
 }
 
-/* ── Export Registry ── */
+/* ── Export Registries ── */
 
 export const SYNTHS = {
   "pack-select":      packSelect,
@@ -247,4 +247,9 @@ export const SYNTHS = {
   "card-skip":        cardSkip,
   "summary-fanfare":  summaryFanfare,
   "summary-dismiss":  summaryDismiss,
+} as const
+
+/** Audio file sounds — lazily loaded and cached by SoundManager */
+export const AUDIO_SOUNDS = {
+  "tear-drag": "/sounds/tear.mp3",
 } as const

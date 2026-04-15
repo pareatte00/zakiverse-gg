@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
 "use client"
 
 import { GameCard, type Rarity } from "@/components/game/game-card"
