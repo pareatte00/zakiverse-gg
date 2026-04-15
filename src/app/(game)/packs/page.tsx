@@ -130,9 +130,11 @@ function Countdown({ targetDate, label }: { targetDate: string, label: string })
   const pulse = parts.urgency === "urgent" || parts.urgency === "critical"
 
   return (
-    <span className={"flex items-center gap-1.5"}>
-      <Clock className={cn("h-3.5 w-3.5", s.icon, pulse && "animate-pulse")} />
-      <span className={cn("text-[11px]", s.unit)}>{label}</span>
+    <div className={"flex flex-col gap-1"}>
+      <span className={"flex items-center gap-1.5"}>
+        <Clock className={cn("h-3.5 w-3.5", s.icon, pulse && "animate-pulse")} />
+        <span className={cn("text-[11px]", s.unit)}>{label}</span>
+      </span>
 
       <span className={"flex items-center gap-1"}>
         {parts.segments.map((seg) => (
@@ -146,7 +148,7 @@ function Countdown({ targetDate, label }: { targetDate: string, label: string })
           </span>
         ))}
       </span>
-    </span>
+    </div>
   )
 }
 
@@ -577,16 +579,15 @@ function PoolSection({ pool, onPackClick, onInfo }: PoolSectionProps) {
             )}
           </div>
 
-          {/* Description + countdown */}
-          {(pool.description || countdownTarget) && (
-            <div className={"mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 pl-8"}>
-              {pool.description && (
-                <p className={cn("text-[11px]", style.descColor)}>{pool.description}</p>
-              )}
+          {/* Description */}
+          {pool.description && (
+            <p className={cn("mt-1.5 pl-8 text-[11px]", style.descColor)}>{pool.description}</p>
+          )}
 
-              {countdownTarget && (
-                <Countdown label={countdownLabel} targetDate={countdownTarget} />
-              )}
+          {/* Countdown */}
+          {countdownTarget && (
+            <div className={"mt-2 pl-8"}>
+              <Countdown label={countdownLabel} targetDate={countdownTarget} />
             </div>
           )}
         </div>
