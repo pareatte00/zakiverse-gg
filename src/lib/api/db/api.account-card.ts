@@ -9,6 +9,7 @@ export interface AccountCardPayload {
   id:          string
   account_id:  string
   card_id:     string
+  level:       number
   obtained_at: string
 }
 

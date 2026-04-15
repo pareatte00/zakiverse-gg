@@ -33,8 +33,9 @@ export interface CreateCardRequest {
   config:             CardConfig
   tag_id:             string
   favorite?:          number
-  anime_mal_id:       number
-  anime_title:        string
+  anime_id?:          string
+  anime_mal_id?:      number
+  anime_title?:       string
   anime_synopsis?:    string
   anime_cover_image?: string
 }

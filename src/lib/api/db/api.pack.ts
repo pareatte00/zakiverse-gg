@@ -27,6 +27,7 @@ export interface PackCardPayload {
   rarity:        string
   tag_name:      string | null
   is_owned?:     boolean
+  level?:        number
   anime:         PackCardAnimePayload
 }
 
@@ -94,22 +95,36 @@ export interface RemovePackCardsRequest {
   card_ids: string[]
 }
 
+export interface LevelUpPayload {
+  old_level: number
+  new_level: number
+}
+
 export interface PulledCardPayload {
-  card_id:     string
-  rarity:      string
-  is_new:      boolean
-  is_pity:     boolean
-  is_featured: boolean
-  name:        string
-  image:       string
-  config:      CardConfig
-  tag_name:    string
-  favorite:    number
-  anime:       PackCardAnimePayload
+  card_id:      string
+  rarity:       string
+  is_new:       boolean
+  is_pity:      boolean
+  is_featured:  boolean
+  name:         string
+  image:        string
+  config:       CardConfig
+  tag_name:     string
+  favorite:     number
+  anime:        PackCardAnimePayload
+  level_up?:    LevelUpPayload
+  coins_gained?: number
+}
+
+export interface PullBalancePayload {
+  coin:        number
+  coin_spent:  number
+  coin_gained: number
 }
 
 export interface PullResultPayload {
-  cards: PulledCardPayload[]
+  cards:   PulledCardPayload[]
+  balance: PullBalancePayload
 }
 
 export interface PityInfoPayload {

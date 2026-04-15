@@ -322,6 +322,7 @@ export function GameCard({ name, anime, image, backgroundImage, rarity = "common
     return () => {
       if (touchTimerRef.current) clearTimeout(touchTimerRef.current)
 
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       const card = cardRef.current
       if (card && touchActiveRef.current) card.removeEventListener("touchmove", touchMoveRef.current)
     }
